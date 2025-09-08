@@ -1,0 +1,132 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  
+  // ContentFlow AI specific fields
+  projects      Project[]
+  credits       Int       @default(10) // Free tier credits
+  plan          String    @default("free") // free, pro, enterprise
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ContentFlow AI Models
+model Project {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  sourceUrl   String
+  sourceType  String   // youtube, blog, podcast, text
+  content     String   // Original content (JSON string)
+  metadata    String   // Video/content metadata (JSON string)
+  status      String   @default("processing") // processing, completed, failed
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generations Generation[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+}
+
+model Generation {
+  id         String   @id @default(cuid())
+  projectId  String
+  platform   String   // twitter, linkedin, instagram, blog
+  content    String   // Generated content
+  metadata   String   // Hashtags, suggestions, etc (JSON string)
+  promptUsed String   // The prompt template used
+  isEdited   Boolean  @default(false)
+  
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  @@index([projectId])
+  @@index([platform])
+}
+
+model Template {
+  id          String   @id @default(cuid())
+  name        String
+  platform    String   // twitter, linkedin, instagram, blog
+  prompt      String   // The LLM prompt template
+  description String?
+  isDefault   Boolean  @default(false)
+  isPublic    Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([platform])
+  @@index([isDefault])
+}
+
+model Usage {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   // extract, generate, etc
+  credits   Int      // Credits consumed
+  metadata  String?  // Additional usage data (JSON string)
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([createdAt])
+}
