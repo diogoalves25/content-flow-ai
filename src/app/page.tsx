@@ -17,7 +17,8 @@ import {
   AlertCircle,
   CheckCircle,
   ArrowRight,
-  Zap
+  Zap,
+  Copy
 } from 'lucide-react';
 import type { TwitterThread } from '@/lib/generators/twitter-generator';
 import type { LinkedInPost } from '@/lib/generators/linkedin-generator';
@@ -450,7 +451,7 @@ export default function HomePage() {
                 
                 <div className="mt-6 flex justify-end">
                   <Button
-                    onClick={() => handleCopy(generations.linkedin.content, 'thread')}
+                    onClick={() => handleCopy(generations.linkedin?.content || '', 'thread')}
                     className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                   >
                     <Copy className="h-4 w-4 mr-2" />

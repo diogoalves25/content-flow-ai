@@ -12,6 +12,7 @@ interface URLInputProps {
   onSubmit: (url: string, metadata?: Record<string, unknown>) => void;
   loading?: boolean;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 interface ValidationResult {
@@ -25,7 +26,7 @@ interface ValidationResult {
   error?: string;
 }
 
-export function URLInput({ onSubmit, loading = false, className = '' }: URLInputProps) {
+export function URLInput({ onSubmit, loading = false, className = '', style }: URLInputProps) {
   const [url, setUrl] = useState('');
   const [validating, setValidating] = useState(false);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
@@ -119,7 +120,7 @@ export function URLInput({ onSubmit, loading = false, className = '' }: URLInput
   };
 
   return (
-    <div className={`premium-card p-8 ${className} animate-fade-in-up hover:scale-[1.02] transition-all duration-300`}>
+    <div className={`premium-card p-8 ${className} animate-fade-in-up hover:scale-[1.02] transition-all duration-300`} style={style}>
       <div className="text-center mb-8">
         <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-red-500 via-pink-500 to-purple-500 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
           <Youtube className="h-10 w-10 text-white drop-shadow-sm" />

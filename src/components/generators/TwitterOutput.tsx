@@ -170,107 +170,107 @@ export function TwitterOutput({
             const charCount = getCharacterCount(currentText);
             const overLimit = isOverLimit(currentText);
 
+            const cardClasses = index === 0 
+              ? 'premium-card p-6 hover:scale-105 transition-all duration-200 border-2 border-blue-200/50 bg-gradient-to-r from-blue-50/50 to-cyan-50/30'
+              : 'premium-card p-6 hover:scale-105 transition-all duration-200 bg-white/95';
+
+            const charCountClasses = overLimit 
+              ? 'text-red-500' 
+              : charCount > 260 
+              ? 'text-orange-500' 
+              : 'text-muted-foreground';
+
             return (
               <div key={index} className="relative">
-                <div className={`premium-card p-6 hover:scale-[1.01] transition-all duration-200 ${
-                  index === 0 ? 'border-2 border-blue-200/50 bg-gradient-to-r from-blue-50/50 to-cyan-50/30' : 'bg-white/95'
-                }`}>
-                    <div className="flex items-start gap-3">
-                      {/* Tweet number badge */}
-                      <Badge variant={index === 0 ? 'default' : 'secondary'}>
-                        {index === 0 ? 'Hook' : `${index + 1}/${thread.totalTweets}`}
-                      </Badge>
+                <div className={cardClasses}>
+                  <div className="flex items-start gap-3">
+                    <Badge variant={index === 0 ? 'default' : 'secondary'}>
+                      {index === 0 ? 'Hook' : `${index + 1}/${thread.totalTweets}`}
+                    </Badge>
 
-                      <div className="flex-1 space-y-2">
-                        {isEditing ? (
-                          <div className="space-y-2">
-                            <Textarea
-                              value={editContent}
-                              onChange={(e) => setEditContent(e.target.value)}
-                              className={`min-h-[80px] ${overLimit ? 'border-red-500' : ''}`}
-                              placeholder="Edit your tweet..."
-                            />
-                            <div className="flex items-center justify-between">
-                              <span className={`text-xs ${
-                                overLimit ? 'text-red-500' : 
-                                charCount > 260 ? 'text-orange-500' : 
-                                'text-muted-foreground'
-                              }`}>
-                                {charCount}/280 characters
-                                {overLimit && (
-                                  <span className="ml-2 text-red-500">
-                                    ({charCount - 280} over limit)
-                                  </span>
-                                )}
-                              </span>
-                              <div className="space-x-3">
-                                <Button
-                                  variant="outline"
-                                  onClick={handleCancelEdit}
-                                  className="px-4 py-2 rounded-xl border-gray-200 hover:bg-gray-50 transition-all"
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  onClick={handleSaveEdit}
-                                  disabled={overLimit}
-                                  className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
-                                >
-                                  <Save className="h-4 w-4 mr-2" />
-                                  Save
-                                </Button>
-                              </div>
+                    <div className="flex-1 space-y-2">
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            className={`min-h-[80px] ${overLimit ? 'border-red-500' : ''}`}
+                            placeholder="Edit your tweet..."
+                          />
+                          <div className="flex items-center justify-between">
+                            <span className={`text-xs ${charCountClasses}`}>
+                              {charCount}/280 characters
+                              {overLimit && (
+                                <span className="ml-2 text-red-500">
+                                  ({charCount - 280} over limit)
+                                </span>
+                              )}
+                            </span>
+                            <div className="space-x-3">
+                              <Button
+                                variant="outline"
+                                onClick={handleCancelEdit}
+                                className="px-4 py-2 rounded-xl border-gray-200 hover:bg-gray-50 transition-all"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                onClick={handleSaveEdit}
+                                disabled={overLimit}
+                                className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                              >
+                                <Save className="h-4 w-4 mr-2" />
+                                Save
+                              </Button>
                             </div>
                           </div>
-                        ) : (
-                          <>
-                            <div className="text-sm leading-relaxed">
-                              {tweet.split('\n').map((line, lineIndex) => (
-                                <div key={lineIndex}>{line}</div>
-                              ))}
-                            </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="text-sm leading-relaxed">
+                            {tweet.split('\n').map((line, lineIndex) => (
+                              <div key={lineIndex}>{line}</div>
+                            ))}
+                          </div>
+                          
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span className={charCount > 260 ? 'text-orange-500' : ''}>
+                              {charCount}/280 characters
+                            </span>
                             
-                            {/* Character count */}
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <span className={charCount > 260 ? 'text-orange-500' : ''}>
-                                {charCount}/280 characters
-                              </span>
-                              
-                              {/* Action buttons */}
-                              <div className="flex gap-2">
-                                {onEdit && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleEdit(index)}
-                                    className="h-8 px-3 rounded-lg hover:bg-blue-50 border-blue-200 transition-all"
-                                  >
-                                    <Edit className="h-3 w-3 mr-1" />
-                                    Edit
-                                  </Button>
-                                )}
+                            <div className="flex gap-2">
+                              {onEdit && (
                                 <Button
                                   size="sm"
-                                  onClick={() => handleCopy(tweet, 'tweet', `tweet-${index}`)}
-                                  className="h-8 px-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-lg shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-200"
+                                  variant="outline"
+                                  onClick={() => handleEdit(index)}
+                                  className="h-8 px-3 rounded-lg hover:bg-blue-50 border-blue-200 transition-all"
                                 >
-                                  {copiedStates[`tweet-${index}`] ? (
-                                    <>
-                                      <CheckCircle className="h-3 w-3 mr-1 text-green-400" />
-                                      Copied!
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Copy className="h-3 w-3 mr-1" />
-                                      Copy
-                                    </>
-                                  )}
+                                  <Edit className="h-3 w-3 mr-1" />
+                                  Edit
                                 </Button>
-                              </div>
+                              )}
+                              <Button
+                                size="sm"
+                                onClick={() => handleCopy(tweet, 'tweet', `tweet-${index}`)}
+                                className="h-8 px-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-lg shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-200"
+                              >
+                                {copiedStates[`tweet-${index}`] ? (
+                                  <div className="flex items-center">
+                                    <CheckCircle className="h-3 w-3 mr-1 text-green-400" />
+                                    Copied!
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center">
+                                    <Copy className="h-3 w-3 mr-1" />
+                                    Copy
+                                  </div>
+                                )}
+                              </Button>
                             </div>
-                          </>
-                        )}
-                      </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -284,20 +284,24 @@ export function TwitterOutput({
           <div className="premium-card p-6 bg-gradient-to-r from-purple-50 to-pink-50/50 border border-purple-100/50">
             <h4 className="text-lg font-semibold text-gray-900 mb-4">Suggested Hashtags</h4>
             <div className="flex flex-wrap gap-3">
-              {thread.hashtags.map((hashtag, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleCopy(hashtag, 'tweet', `hashtag-${index}`)}
-                  className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 hover:from-purple-200 hover:to-pink-200 text-purple-800 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 hover:scale-105 shadow-sm hover:shadow-md"
-                >
-                  {hashtag}
-                  {copiedStates[`hashtag-${index}`] ? (
-                    <CheckCircle className="h-3 w-3 ml-2 text-green-600" />
-                  ) : (
-                    <Copy className="h-3 w-3 ml-2 opacity-60" />
-                  )}
-                </button>
-              ))}
+              {thread.hashtags.map((hashtag, index) => {
+                const hashtagClasses = "inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 hover:from-purple-200 hover:to-pink-200 text-purple-800 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 hover:scale-105 shadow-sm hover:shadow-md";
+                
+                return (
+                  <button
+                    key={index}
+                    onClick={() => handleCopy(hashtag, 'tweet', `hashtag-${index}`)}
+                    className={hashtagClasses}
+                  >
+                    {hashtag}
+                    {copiedStates[`hashtag-${index}`] ? (
+                      <CheckCircle className="h-3 w-3 ml-2 text-green-600" />
+                    ) : (
+                      <Copy className="h-3 w-3 ml-2 opacity-60" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
