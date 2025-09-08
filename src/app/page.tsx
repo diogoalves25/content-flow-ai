@@ -141,62 +141,136 @@ export default function HomePage() {
 
   if (step === 'input') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
-        <div className="container mx-auto px-4 py-8">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              ContentFlow AI
+      <div className="min-h-screen bg-premium-gradient relative overflow-hidden">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-white/20 to-transparent rounded-full blur-3xl animate-float"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-white/20 to-transparent rounded-full blur-3xl animate-float" style={{ animationDelay: '1.5s' }}></div>
+          <div className="absolute top-1/2 left-1/4 w-40 h-40 bg-gradient-to-br from-purple-200/30 to-pink-200/30 rounded-full blur-2xl animate-float" style={{ animationDelay: '0.8s' }}></div>
+          <div className="absolute top-1/4 right-1/4 w-60 h-60 bg-gradient-to-br from-blue-200/20 to-cyan-200/20 rounded-full blur-2xl animate-float" style={{ animationDelay: '2.2s' }}></div>
+        </div>
+        
+        <div className="container mx-auto px-4 py-16 relative z-10">
+          {/* Premium Header */}
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 mb-6 border border-white/30 animate-bounce-in">
+              <Sparkles className="h-4 w-4 text-white animate-glow" />
+              <span className="text-sm font-medium text-white">AI-Powered Content Creation</span>
+            </div>
+            <h1 className="text-6xl font-bold mb-6 text-white leading-tight animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+              Content<span className="text-transparent bg-gradient-to-r from-yellow-200 to-pink-200 bg-clip-text animate-shimmer">Flow</span> AI
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl text-white/90 max-w-3xl mx-auto leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
               Transform YouTube videos into engaging social media content with AI. 
-              Extract, repurpose, and optimize your content for every platform.
+              Extract, repurpose, and optimize your content for every platform in seconds.
             </p>
           </div>
 
-          {/* Features */}
-          <div className="grid md:grid-cols-4 gap-6 mb-12">
+          {/* Premium Features Grid */}
+          <div className="grid md:grid-cols-4 gap-8 mb-16">
             {[
-              { icon: Video, title: 'Extract', desc: 'YouTube transcripts' },
-              { icon: Sparkles, title: 'Generate', desc: 'AI-powered content' },
-              { icon: Twitter, title: 'Optimize', desc: 'Platform-specific' },
-              { icon: Zap, title: 'Scale', desc: 'Multiple formats' }
+              { 
+                icon: Video, 
+                title: 'Smart Extract', 
+                desc: 'AI-powered YouTube transcript extraction with metadata',
+                containerGradient: 'from-red-500 via-pink-500 to-rose-500',
+                iconColor: 'text-white',
+                delay: '0ms'
+              },
+              { 
+                icon: Sparkles, 
+                title: 'AI Generate', 
+                desc: 'Advanced GPT-4 powered content generation',
+                containerGradient: 'from-purple-500 via-violet-500 to-indigo-500',
+                iconColor: 'text-white',
+                delay: '100ms'
+              },
+              { 
+                icon: Twitter, 
+                title: 'Multi-Platform', 
+                desc: 'Optimized for Twitter, LinkedIn, Instagram',
+                containerGradient: 'from-blue-500 via-cyan-500 to-teal-500',
+                iconColor: 'text-white',
+                delay: '200ms'
+              },
+              { 
+                icon: Zap, 
+                title: 'Instant Scale', 
+                desc: 'Generate content for multiple platforms simultaneously',
+                containerGradient: 'from-yellow-500 via-orange-500 to-red-500',
+                iconColor: 'text-white',
+                delay: '300ms'
+              }
             ].map((feature, index) => (
-              <Card key={index} className="text-center">
-                <CardContent className="pt-6">
-                  <feature.icon className="h-8 w-8 mx-auto mb-3 text-blue-600" />
-                  <h3 className="font-semibold mb-1">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground">{feature.desc}</p>
-                </CardContent>
-              </Card>
+              <div 
+                key={index} 
+                className="premium-card p-8 text-center group hover:scale-105 animate-fade-in-up"
+                style={{ animationDelay: feature.delay }}
+              >
+                <div className={`w-20 h-20 mx-auto mb-6 rounded-3xl bg-gradient-to-br ${feature.containerGradient} flex items-center justify-center group-hover:scale-110 transition-all duration-300 shadow-lg group-hover:shadow-xl`}>
+                  <feature.icon className={`h-9 w-9 ${feature.iconColor} drop-shadow-sm`} />
+                </div>
+                <h3 className="font-bold text-xl mb-3 text-gray-900">{feature.title}</h3>
+                <p className="text-gray-600 leading-relaxed">{feature.desc}</p>
+              </div>
             ))}
           </div>
 
-          {/* Input Section */}
-          <div className="max-w-2xl mx-auto">
+          {/* Premium Input Section */}
+          <div className="max-w-3xl mx-auto mb-16">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-white mb-4">
+                Get Started in Seconds
+              </h2>
+              <p className="text-white/80 text-lg">
+                Paste any YouTube URL to transform it into viral social media content
+              </p>
+            </div>
+            
             <URLInput 
               onSubmit={handleYouTubeSubmit}
               loading={loading}
+              className="animate-fade-in-up"
+              style={{ animationDelay: '400ms' }}
             />
 
             {error && (
-              <Alert variant="destructive" className="mt-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
+              <div className="mt-6 premium-card p-4 border-l-4 border-red-500 bg-red-50">
+                <div className="flex items-center">
+                  <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
+                  <div className="text-red-800 font-medium">{error}</div>
+                </div>
+              </div>
             )}
           </div>
 
-          {/* Example */}
-          <div className="max-w-2xl mx-auto mt-8 text-center">
-            <p className="text-sm text-muted-foreground mb-2">Try with this example:</p>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => handleYouTubeSubmit('https://www.youtube.com/watch?v=dQw4w9WgXcQ')}
-            >
-              Use Example Video
-            </Button>
+          {/* Social Proof */}
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="premium-card p-8 animate-fade-in-up hover:scale-105 transition-all duration-300" style={{ animationDelay: '500ms' }}>
+              <div className="grid md:grid-cols-3 gap-8">
+                <div className="group cursor-pointer">
+                  <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-300">
+                    10,000+
+                  </div>
+                  <div className="text-gray-600 group-hover:text-purple-600 transition-colors duration-300">Videos Processed</div>
+                  <div className="w-12 h-1 bg-gradient-to-r from-purple-400 to-blue-400 mx-auto mt-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </div>
+                <div className="group cursor-pointer">
+                  <div className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-300">
+                    50,000+
+                  </div>
+                  <div className="text-gray-600 group-hover:text-pink-600 transition-colors duration-300">Social Posts Generated</div>
+                  <div className="w-12 h-1 bg-gradient-to-r from-pink-400 to-purple-400 mx-auto mt-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </div>
+                <div className="group cursor-pointer">
+                  <div className="text-4xl font-bold bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-300">
+                    95%
+                  </div>
+                  <div className="text-gray-600 group-hover:text-green-600 transition-colors duration-300">Time Saved</div>
+                  <div className="w-12 h-1 bg-gradient-to-r from-green-400 to-teal-400 mx-auto mt-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -277,33 +351,68 @@ export default function HomePage() {
         )}
 
         {/* Platform Generation Buttons */}
-        <div className="grid md:grid-cols-4 gap-4 mb-8">
+        <div className="grid md:grid-cols-4 gap-6 mb-8">
           {[
-            { key: 'twitter', icon: Twitter, label: 'Twitter Thread' },
-            { key: 'linkedin', icon: Linkedin, label: 'LinkedIn Post' },
-            { key: 'instagram', icon: Instagram, label: 'Instagram Caption' },
-            { key: 'blog', icon: FileText, label: 'Blog Article' }
-          ].map(({ key, icon: Icon, label }) => (
-            <Card key={key} className="cursor-pointer hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <Button
-                  className="w-full"
-                  variant={generations[key as keyof GenerationState] ? 'secondary' : 'outline'}
-                  onClick={() => generateContent(key as 'twitter' | 'linkedin' | 'instagram' | 'blog')}
-                  disabled={generatingPlatform !== null}
-                >
+            { 
+              key: 'twitter', 
+              icon: Twitter, 
+              label: 'Twitter Thread',
+              gradient: 'from-blue-500 to-cyan-500',
+              bgGradient: 'from-blue-50 to-cyan-50'
+            },
+            { 
+              key: 'linkedin', 
+              icon: Linkedin, 
+              label: 'LinkedIn Post',
+              gradient: 'from-blue-600 to-blue-700',
+              bgGradient: 'from-blue-50 to-indigo-50'
+            },
+            { 
+              key: 'instagram', 
+              icon: Instagram, 
+              label: 'Instagram Caption',
+              gradient: 'from-pink-500 via-purple-500 to-orange-500',
+              bgGradient: 'from-pink-50 to-purple-50'
+            },
+            { 
+              key: 'blog', 
+              icon: FileText, 
+              label: 'Blog Article',
+              gradient: 'from-gray-600 to-gray-800',
+              bgGradient: 'from-gray-50 to-slate-50'
+            }
+          ].map(({ key, icon: Icon, label, gradient, bgGradient }) => (
+            <div key={key} className={`premium-card p-6 cursor-pointer hover:scale-105 transition-all duration-200 ${
+              generations[key as keyof GenerationState] 
+                ? `bg-gradient-to-r ${bgGradient} border-2 border-green-200` 
+                : 'bg-white/95 hover:bg-white'
+            }`}>
+              <Button
+                className="w-full h-auto p-4 flex flex-col items-center gap-3 bg-transparent hover:bg-transparent border-none shadow-none"
+                onClick={() => generateContent(key as 'twitter' | 'linkedin' | 'instagram' | 'blog')}
+                disabled={generatingPlatform !== null}
+              >
+                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg`}>
                   {generatingPlatform === key ? (
-                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : generations[key as keyof GenerationState] ? (
-                    <CheckCircle className="h-4 w-4 mr-2" />
+                    <CheckCircle className="h-6 w-6 text-white drop-shadow-sm" />
                   ) : (
-                    <Icon className="h-4 w-4 mr-2" />
+                    <Icon className="h-6 w-6 text-white drop-shadow-sm" />
                   )}
-                  {label}
-                  {!generations[key as keyof GenerationState] && <ArrowRight className="h-4 w-4 ml-2" />}
-                </Button>
-              </CardContent>
-            </Card>
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold text-gray-900 text-base mb-1">{label}</div>
+                  {generations[key as keyof GenerationState] ? (
+                    <div className="text-sm text-green-600 font-medium">Generated ✓</div>
+                  ) : generatingPlatform === key ? (
+                    <div className="text-sm text-purple-600 font-medium">Generating...</div>
+                  ) : (
+                    <div className="text-sm text-gray-500">Click to generate</div>
+                  )}
+                </div>
+              </Button>
+            </div>
           ))}
         </div>
 
@@ -317,21 +426,39 @@ export default function HomePage() {
           )}
 
           {generations.linkedin && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Linkedin className="h-5 w-5 text-blue-600" />
-                  LinkedIn Post
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-muted p-4 rounded-lg">
-                  <pre className="whitespace-pre-wrap text-sm">
+            <div className="premium-card p-8 animate-fade-in-up">
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
+                    <Linkedin className="h-5 w-5 text-white drop-shadow-sm" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    LinkedIn Post
+                  </h2>
+                </div>
+                <p className="text-gray-600 text-lg">
+                  Professional content ready to share on LinkedIn
+                </p>
+              </div>
+              
+              <div className="premium-card p-6 bg-gradient-to-r from-blue-50 to-indigo-50/50 border border-blue-100/50">
+                <div className="text-gray-900 leading-relaxed">
+                  <pre className="whitespace-pre-wrap font-sans text-base">
                     {generations.linkedin.content}
                   </pre>
                 </div>
-              </CardContent>
-            </Card>
+                
+                <div className="mt-6 flex justify-end">
+                  <Button
+                    onClick={() => handleCopy(generations.linkedin.content, 'thread')}
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Post
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Add other platform outputs here */}

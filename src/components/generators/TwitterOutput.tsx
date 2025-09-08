@@ -84,36 +84,52 @@ export function TwitterOutput({
 
   if (loading) {
     return (
-      <Card className={className}>
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse">
-                <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-                <div className="h-4 bg-muted rounded w-1/2"></div>
-              </div>
-            ))}
+      <div className={`premium-card p-8 ${className} animate-fade-in-up`}>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg animate-pulse">
+            <Twitter className="h-5 w-5 text-white drop-shadow-sm" />
           </div>
-        </CardContent>
-      </Card>
+          <h2 className="text-2xl font-bold text-gray-900">Generating Twitter Thread...</h2>
+        </div>
+        <div className="space-y-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="premium-card p-6 bg-white/50">
+              <div className="animate-pulse space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-6 w-12 bg-gradient-to-r from-blue-200 to-cyan-200 rounded-full"></div>
+                  <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-3/4"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-full"></div>
+                  <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-2/3"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Twitter className="h-5 w-5 text-blue-500" />
-          Twitter Thread ({thread.totalTweets} tweets)
-        </CardTitle>
-        <CardDescription>
+    <div className={`premium-card p-8 ${className} animate-fade-in-up`}>
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg">
+            <Twitter className="h-5 w-5 text-white drop-shadow-sm" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Twitter Thread ({thread.totalTweets} tweets)
+          </h2>
+        </div>
+        <p className="text-gray-600 text-lg">
           Generated Twitter thread ready to post
-        </CardDescription>
-      </CardHeader>
+        </p>
+      </div>
 
-      <CardContent className="space-y-6">
+      <div className="space-y-8">
         {/* Thread Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-blue-50 rounded-lg">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gradient-to-r from-blue-50 to-cyan-50/50 rounded-2xl border border-blue-100/50 shadow-sm">
           <div className="text-center">
             <div className="font-semibold text-blue-800">{thread.totalTweets}</div>
             <div className="text-xs text-blue-600">Tweets</div>
@@ -128,22 +144,26 @@ export function TwitterOutput({
           </div>
           <div className="text-center">
             <Button
-              size="sm"
               onClick={copyFullThread}
-              variant="outline"
-              className="h-8"
+              className="h-10 px-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
             >
               {copiedStates['full-thread'] ? (
-                <CheckCircle className="h-3 w-3" />
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Copied!
+                </>
               ) : (
-                <Copy className="h-3 w-3" />
+                <>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy All
+                </>
               )}
             </Button>
           </div>
         </div>
 
         {/* Individual Tweets */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           {thread.tweets.map((tweet, index) => {
             const isEditing = editingTweet === index;
             const currentText = isEditing ? editContent : tweet;
@@ -152,8 +172,9 @@ export function TwitterOutput({
 
             return (
               <div key={index} className="relative">
-                <Card className={`${index === 0 ? 'border-blue-200 bg-blue-50/50' : ''}`}>
-                  <CardContent className="p-4">
+                <div className={`premium-card p-6 hover:scale-[1.01] transition-all duration-200 ${
+                  index === 0 ? 'border-2 border-blue-200/50 bg-gradient-to-r from-blue-50/50 to-cyan-50/30' : 'bg-white/95'
+                }`}>
                     <div className="flex items-start gap-3">
                       {/* Tweet number badge */}
                       <Badge variant={index === 0 ? 'default' : 'secondary'}>
@@ -182,20 +203,20 @@ export function TwitterOutput({
                                   </span>
                                 )}
                               </span>
-                              <div className="space-x-2">
+                              <div className="space-x-3">
                                 <Button
-                                  size="sm"
                                   variant="outline"
                                   onClick={handleCancelEdit}
+                                  className="px-4 py-2 rounded-xl border-gray-200 hover:bg-gray-50 transition-all"
                                 >
                                   Cancel
                                 </Button>
                                 <Button
-                                  size="sm"
                                   onClick={handleSaveEdit}
                                   disabled={overLimit}
+                                  className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                                 >
-                                  <Save className="h-3 w-3 mr-1" />
+                                  <Save className="h-4 w-4 mr-2" />
                                   Save
                                 </Button>
                               </div>
@@ -216,27 +237,33 @@ export function TwitterOutput({
                               </span>
                               
                               {/* Action buttons */}
-                              <div className="space-x-1">
+                              <div className="flex gap-2">
                                 {onEdit && (
                                   <Button
                                     size="sm"
-                                    variant="ghost"
+                                    variant="outline"
                                     onClick={() => handleEdit(index)}
-                                    className="h-6 px-2"
+                                    className="h-8 px-3 rounded-lg hover:bg-blue-50 border-blue-200 transition-all"
                                   >
-                                    <Edit className="h-3 w-3" />
+                                    <Edit className="h-3 w-3 mr-1" />
+                                    Edit
                                   </Button>
                                 )}
                                 <Button
                                   size="sm"
-                                  variant="ghost"
                                   onClick={() => handleCopy(tweet, 'tweet', `tweet-${index}`)}
-                                  className="h-6 px-2"
+                                  className="h-8 px-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-lg shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-200"
                                 >
                                   {copiedStates[`tweet-${index}`] ? (
-                                    <CheckCircle className="h-3 w-3 text-green-500" />
+                                    <>
+                                      <CheckCircle className="h-3 w-3 mr-1 text-green-400" />
+                                      Copied!
+                                    </>
                                   ) : (
-                                    <Copy className="h-3 w-3" />
+                                    <>
+                                      <Copy className="h-3 w-3 mr-1" />
+                                      Copy
+                                    </>
                                   )}
                                 </Button>
                               </div>
@@ -245,8 +272,8 @@ export function TwitterOutput({
                         )}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </div>
             );
           })}
@@ -254,23 +281,22 @@ export function TwitterOutput({
 
         {/* Hashtags */}
         {thread.hashtags.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">Suggested Hashtags</h4>
-            <div className="flex flex-wrap gap-2">
+          <div className="premium-card p-6 bg-gradient-to-r from-purple-50 to-pink-50/50 border border-purple-100/50">
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Suggested Hashtags</h4>
+            <div className="flex flex-wrap gap-3">
               {thread.hashtags.map((hashtag, index) => (
-                <Badge
+                <button
                   key={index}
-                  variant="outline"
-                  className="cursor-pointer hover:bg-blue-50"
                   onClick={() => handleCopy(hashtag, 'tweet', `hashtag-${index}`)}
+                  className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 hover:from-purple-200 hover:to-pink-200 text-purple-800 rounded-full text-sm font-medium cursor-pointer transition-all duration-200 hover:scale-105 shadow-sm hover:shadow-md"
                 >
                   {hashtag}
                   {copiedStates[`hashtag-${index}`] ? (
-                    <CheckCircle className="h-3 w-3 ml-1 text-green-500" />
+                    <CheckCircle className="h-3 w-3 ml-2 text-green-600" />
                   ) : (
-                    <Copy className="h-3 w-3 ml-1" />
+                    <Copy className="h-3 w-3 ml-2 opacity-60" />
                   )}
-                </Badge>
+                </button>
               ))}
             </div>
           </div>
@@ -278,19 +304,26 @@ export function TwitterOutput({
 
         {/* Engagement Tips */}
         {thread.engagementTips.length > 0 && (
-          <Alert>
-            <ThumbsUp className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Engagement Tips:</strong>
-              <ul className="mt-2 space-y-1">
-                {thread.engagementTips.map((tip, index) => (
-                  <li key={index} className="text-xs">• {tip}</li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
+          <div className="premium-card p-6 bg-gradient-to-r from-emerald-50 to-teal-50/50 border border-emerald-100/50">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center flex-shrink-0">
+                <ThumbsUp className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-3 text-lg">Engagement Tips</h4>
+                <ul className="space-y-2">
+                  {thread.engagementTips.map((tip, index) => (
+                    <li key={index} className="flex items-start gap-2 text-gray-700">
+                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="text-sm leading-relaxed">{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
