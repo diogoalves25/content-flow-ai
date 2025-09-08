@@ -88,7 +88,7 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
   try {
     const transcript = await YoutubeTranscript.fetchTranscript(videoId);
     
-    return transcript.map((item: any) => ({
+    return transcript.map((item: { text: string; offset: number; duration: number }) => ({
       text: item.text,
       offset: item.offset,
       duration: item.duration

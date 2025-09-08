@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Youtube, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface URLInputProps {
-  onSubmit: (url: string, metadata?: any) => void;
+  onSubmit: (url: string, metadata?: Record<string, unknown>) => void;
   loading?: boolean;
   className?: string;
 }
@@ -57,7 +57,7 @@ export function URLInput({ onSubmit, loading = false, className = '' }: URLInput
         });
         setError(data.error);
       }
-    } catch (err) {
+    } catch {
       const errorMsg = 'Failed to validate URL';
       setValidation({
         isValid: false,
@@ -190,7 +190,7 @@ export function URLInput({ onSubmit, loading = false, className = '' }: URLInput
 
           <Button
             type="submit"
-            disabled={loading || validating || !url.trim() || (validation && !validation.isValid)}
+            disabled={loading || validating || !url.trim() || (validation !== null && !validation.isValid)}
             className="w-full"
           >
             {loading ? (

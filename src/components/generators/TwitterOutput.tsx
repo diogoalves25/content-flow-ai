@@ -11,11 +11,8 @@ import {
   Twitter, 
   Edit, 
   Save, 
-  TrendingUp, 
-  Users, 
-  MessageCircle,
+  TrendingUp,
   CheckCircle,
-  AlertCircle,
   ThumbsUp
 } from 'lucide-react';
 import type { TwitterThread } from '@/lib/generators/twitter-generator';

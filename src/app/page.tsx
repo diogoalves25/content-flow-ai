@@ -20,6 +20,7 @@ import {
   Zap
 } from 'lucide-react';
 import type { TwitterThread } from '@/lib/generators/twitter-generator';
+import type { LinkedInPost } from '@/lib/generators/linkedin-generator';
 
 interface ExtractedContent {
   videoId: string;
@@ -40,7 +41,7 @@ interface ExtractedContent {
 
 interface GenerationState {
   twitter?: TwitterThread;
-  linkedin?: Record<string, unknown>;
+  linkedin?: LinkedInPost;
   instagram?: Record<string, unknown>;
   blog?: Record<string, unknown>;
 }

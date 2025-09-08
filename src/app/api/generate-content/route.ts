@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateTwitterThread, TwitterGenerationOptions } from '@/lib/generators/twitter-generator';
-import { generateLinkedInPost, LinkedInGenerationOptions } from '@/lib/generators/linkedin-generator';
+import { generateTwitterThread, TwitterGenerationOptions, TwitterThread } from '@/lib/generators/twitter-generator';
+import { generateLinkedInPost, LinkedInGenerationOptions, LinkedInPost } from '@/lib/generators/linkedin-generator';
 import { prisma } from '@/lib/prisma';
 
 interface GenerateContentRequest {
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate content based on platform
-    let generatedContent: Record<string, unknown>;
+    let generatedContent: TwitterThread | LinkedInPost | Record<string, unknown>;
     let promptUsed = '';
 
     console.log(`Generating ${platform} content...`);
