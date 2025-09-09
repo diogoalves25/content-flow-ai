@@ -1,4 +1,5 @@
 import { YoutubeTranscript } from 'youtube-transcript';
+import { YoutubeTranscript as ModernYoutubeTranscript } from '@danielxceron/youtube-transcript';
 
 export interface VideoMetadata {
   title: string;
@@ -193,9 +194,37 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
   console.log('🚀 Starting transcript extraction for video ID:', videoId);
   
   const strategies = [
-    // Strategy 1: Direct YouTube timedtext API call
+    // Strategy 1: Modern @danielxceron/youtube-transcript with Innertube API fallback
     async () => {
-      console.log('📡 Strategy 1: Direct YouTube timedtext API');
+      console.log('🚀 Strategy 1: Modern youtube-transcript with Innertube API fallback');
+      try {
+        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+        const transcriptData = await ModernYoutubeTranscript.fetchTranscript(videoUrl);
+        
+        if (!transcriptData || !Array.isArray(transcriptData) || transcriptData.length === 0) {
+          throw new Error('No transcript data returned from modern API');
+        }
+
+        console.log(`✅ Successfully extracted ${transcriptData.length} transcript segments using modern API`);
+        console.log(`📝 First segment sample: "${transcriptData[0].text?.substring(0, 100)}..."`);
+        
+        // Convert to our format
+        const segments: TranscriptSegment[] = transcriptData.map((item: any) => ({
+          text: item.text || '',
+          offset: parseFloat(item.offset?.toString() || '0'),
+          duration: parseFloat(item.duration?.toString() || '0')
+        }));
+
+        return segments;
+      } catch (error) {
+        console.warn('❌ Modern youtube-transcript strategy failed:', error);
+        throw error;
+      }
+    },
+
+    // Strategy 2: Direct YouTube timedtext API call
+    async () => {
+      console.log('📡 Strategy 2: Direct YouTube timedtext API');
       try {
         // First get video page to extract caption data
         const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
