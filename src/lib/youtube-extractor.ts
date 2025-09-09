@@ -81,19 +81,6 @@ async function getVideoMetadata(videoId: string): Promise<VideoMetadata> {
   }
 }
 
-/**
- * Format duration from seconds to human readable
- */
-function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainingSeconds = seconds % 60;
-  
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-  }
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-}
 
 /**
  * Extract transcript from YouTube video using youtube-transcript package
@@ -110,7 +97,7 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
     }
     
     // Convert to our format
-    const segments: TranscriptSegment[] = transcript.map((item: any) => ({
+    const segments: TranscriptSegment[] = transcript.map((item: { text?: string; offset?: number; duration?: number }) => ({
       text: String(item.text || '').trim(),
       offset: typeof item.offset === 'number' ? item.offset : 0,
       duration: typeof item.duration === 'number' ? item.duration : 0

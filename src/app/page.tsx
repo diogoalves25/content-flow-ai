@@ -16,7 +16,6 @@ import {
   FileText,
   AlertCircle,
   CheckCircle,
-  ArrowRight,
   Zap,
   Copy
 } from 'lucide-react';
@@ -373,14 +372,14 @@ export default function HomePage() {
                           <strong>Manual transcript input required</strong>
                         </div>
                         <p className="text-sm mb-3">
-                          YouTube's automatic transcript extraction is currently limited. To generate high-quality content, please paste the video transcript below.
+                          YouTube&apos;s automatic transcript extraction is currently limited. To generate high-quality content, please paste the video transcript below.
                         </p>
                         <details className="text-xs text-blue-600">
                           <summary className="cursor-pointer hover:text-blue-800">How to get the transcript manually</summary>
                           <div className="mt-2 pl-4 border-l-2 border-blue-300">
                             <p>1. Open the YouTube video in a browser</p>
-                            <p>2. Click the "..." menu below the video</p>
-                            <p>3. Select "Show transcript"</p>
+                            <p>2. Click the &quot;...&quot; menu below the video</p>
+                            <p>3. Select &quot;Show transcript&quot;</p>
                             <p>4. Copy the text and paste it below</p>
                           </div>
                         </details>
@@ -549,7 +548,7 @@ For best results, include the full transcript with natural breaks between senten
                   </h2>
                 </div>
                 <p className="text-gray-600 text-lg">
-                  Engaging post content optimized for Instagram's visual platform
+                  Engaging post content optimized for Instagram&apos;s visual platform
                 </p>
               </div>
 
@@ -561,16 +560,16 @@ For best results, include the full transcript with natural breaks between senten
                   </h3>
                   <div className="prose prose-sm max-w-none">
                     <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
-                      {(generations.instagram as any)?.content || 'Generated Instagram content'}
+                      {(generations.instagram as Record<string, unknown>)?.content as string || 'Generated Instagram content'}
                     </p>
                   </div>
                 </div>
 
-                {(generations.instagram as any)?.hashtags && (
+                {!!(generations.instagram as Record<string, unknown>)?.hashtags && (
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Hashtags:</h4>
                     <div className="flex flex-wrap gap-2">
-                      {(generations.instagram as any).hashtags.map((tag: string, index: number) => (
+                      {((generations.instagram as Record<string, unknown>).hashtags as string[]).map((tag: string, index: number) => (
                         <span key={index} className="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-3 py-1 rounded-full text-sm font-medium">
                           {tag}
                         </span>
@@ -579,11 +578,11 @@ For best results, include the full transcript with natural breaks between senten
                   </div>
                 )}
 
-                {(generations.instagram as any)?.engagementTips && (
+                {!!(generations.instagram as Record<string, unknown>)?.engagementTips && (
                   <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
                     <h4 className="font-medium text-orange-900 mb-2">💡 Engagement Tips:</h4>
                     <ul className="text-orange-800 text-sm space-y-1">
-                      {(generations.instagram as any).engagementTips.map((tip: string, index: number) => (
+                      {((generations.instagram as Record<string, unknown>).engagementTips as string[]).map((tip: string, index: number) => (
                         <li key={index}>• {tip}</li>
                       ))}
                     </ul>
@@ -592,7 +591,7 @@ For best results, include the full transcript with natural breaks between senten
                 
                 <div className="mt-6 flex justify-end">
                   <Button
-                    onClick={() => handleCopy((generations.instagram as any)?.content || '', 'thread')}
+                    onClick={() => handleCopy((generations.instagram as Record<string, unknown>)?.content as string || '', 'thread')}
                     className="bg-gradient-to-r from-pink-500 via-purple-500 to-orange-500 hover:from-pink-600 hover:via-purple-600 hover:to-orange-600 text-white rounded-xl shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                   >
                     <Copy className="h-4 w-4 mr-2" />
@@ -621,17 +620,17 @@ For best results, include the full transcript with natural breaks between senten
               </div>
 
               <div className="space-y-6">
-                {(generations.blog as any)?.title && (
+                {!!(generations.blog as Record<string, unknown>)?.title && (
                   <div className="border-l-4 border-gray-500 pl-4">
                     <h3 className="text-xl font-bold text-gray-900 mb-2">
-                      {(generations.blog as any).title}
+{String((generations.blog as Record<string, unknown>).title || '')}
                     </h3>
                     <div className="flex items-center gap-4 text-sm text-gray-600">
-                      {(generations.blog as any)?.wordCount && (
-                        <span>📝 {(generations.blog as any).wordCount} words</span>
+                      {!!(generations.blog as Record<string, unknown>)?.wordCount && (
+                        <span>📝 {String((generations.blog as Record<string, unknown>).wordCount || '')} words</span>
                       )}
-                      {(generations.blog as any)?.readTime && (
-                        <span>⏱️ {(generations.blog as any).readTime}</span>
+                      {!!(generations.blog as Record<string, unknown>)?.readTime && (
+                        <span>⏱️ {String((generations.blog as Record<string, unknown>).readTime || '')}</span>
                       )}
                     </div>
                   </div>
@@ -640,14 +639,14 @@ For best results, include the full transcript with natural breaks between senten
                 <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
                   <div className="prose prose-lg max-w-none">
                     <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
-                      {(generations.blog as any)?.content || 'Generated blog content'}
+                      {(generations.blog as Record<string, unknown>)?.content as string || 'Generated blog content'}
                     </div>
                   </div>
                 </div>
                 
                 <div className="mt-6 flex justify-end">
                   <Button
-                    onClick={() => handleCopy((generations.blog as any)?.content || '', 'thread')}
+                    onClick={() => handleCopy((generations.blog as Record<string, unknown>)?.content as string || '', 'thread')}
                     className="bg-gradient-to-r from-gray-600 to-gray-800 hover:from-gray-700 hover:to-gray-900 text-white rounded-xl shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                   >
                     <Copy className="h-4 w-4 mr-2" />
