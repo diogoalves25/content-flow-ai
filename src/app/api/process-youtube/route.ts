@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractYouTubeContent, isValidYouTubeUrl } from '@/lib/youtube-extractor';
+import { analyzeTranscript } from '@/lib/transcript-analyzer';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
@@ -25,6 +26,19 @@ export async function POST(request: NextRequest) {
     console.log('Extracting YouTube content for:', url);
     const extractedContent = await extractYouTubeContent(url);
 
+    // Analyze transcript if extraction was successful and transcript exists
+    let analysis = null;
+    if (extractedContent.fullTranscript && extractedContent.fullTranscript.length > 100) {
+      console.log('Analyzing transcript with AI...');
+      try {
+        analysis = await analyzeTranscript(extractedContent.fullTranscript);
+        console.log('✅ Transcript analysis completed');
+      } catch (analysisError) {
+        console.warn('⚠️ Failed to analyze transcript:', analysisError);
+        // Continue without analysis - it's not critical
+      }
+    }
+
     // Save to database if userId is provided
     let project = null;
     if (userId) {
@@ -36,7 +50,8 @@ export async function POST(request: NextRequest) {
           sourceType: 'youtube',
           content: JSON.stringify({
             transcript: extractedContent.transcript,
-            fullTranscript: extractedContent.fullTranscript
+            fullTranscript: extractedContent.fullTranscript,
+            analysis: analysis
           }),
           metadata: JSON.stringify(extractedContent.metadata),
           status: 'completed'
@@ -63,6 +78,7 @@ export async function POST(request: NextRequest) {
       data: {
         projectId: project?.id,
         content: extractedContent,
+        analysis: analysis,
         message: 'YouTube content extracted successfully'
       }
     });
@@ -104,6 +120,19 @@ export async function GET(request: NextRequest) {
     // Just validate and extract basic metadata without saving
     const extractedContent = await extractYouTubeContent(url);
     
+    // Analyze transcript for validation requests too
+    let analysis = null;
+    if (extractedContent.fullTranscript && extractedContent.fullTranscript.length > 100) {
+      console.log('Analyzing transcript for validation...');
+      try {
+        analysis = await analyzeTranscript(extractedContent.fullTranscript);
+        console.log('✅ Validation transcript analysis completed');
+      } catch (analysisError) {
+        console.warn('⚠️ Failed to analyze transcript during validation:', analysisError);
+        // Continue without analysis
+      }
+    }
+    
     return NextResponse.json({
       success: true,
       data: {
@@ -111,6 +140,7 @@ export async function GET(request: NextRequest) {
         metadata: extractedContent.metadata,
         fullTranscript: extractedContent.fullTranscript,
         transcript: extractedContent.transcript,
+        analysis: analysis,
         transcriptLength: extractedContent.fullTranscript.length,
         isValid: true
       }

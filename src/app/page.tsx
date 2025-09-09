@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import type { TwitterThread } from '@/lib/generators/twitter-generator';
 import type { LinkedInPost } from '@/lib/generators/linkedin-generator';
+import type { TranscriptAnalysis } from '@/lib/transcript-analyzer';
+import { TranscriptAnalysisComponent } from '@/components/analysis/TranscriptAnalysis';
 
 interface ExtractedContent {
   videoId: string;
@@ -47,8 +49,9 @@ interface GenerationState {
 }
 
 export default function HomePage() {
-  const [step, setStep] = useState<'input' | 'processing' | 'generated'>('input');
+  const [step, setStep] = useState<'input' | 'processing' | 'analysis' | 'generated'>('input');
   const [extractedContent, setExtractedContent] = useState<ExtractedContent | null>(null);
+  const [analysis, setAnalysis] = useState<TranscriptAnalysis | null>(null);
   const [generations, setGenerations] = useState<GenerationState>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +75,14 @@ export default function HomePage() {
 
       if (data.success) {
         setExtractedContent(data.data.content);
-        setStep('generated');
+        setAnalysis(data.data.analysis);
+        
+        // If we have analysis, show analysis step, otherwise skip to generated
+        if (data.data.analysis) {
+          setStep('analysis');
+        } else {
+          setStep('generated');
+        }
       } else {
         throw new Error(data.error || 'Failed to process video');
       }
@@ -135,9 +145,14 @@ export default function HomePage() {
     console.log(`Copied ${type}:`, content.slice(0, 50) + '...');
   };
 
+  const proceedToGeneration = () => {
+    setStep('generated');
+  };
+
   const resetApp = () => {
     setStep('input');
     setExtractedContent(null);
+    setAnalysis(null);
     setGenerations({});
     setError(null);
     setLoading(false);
@@ -311,6 +326,71 @@ export default function HomePage() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'analysis' && analysis && extractedContent) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+        <div className="container mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="max-w-6xl mx-auto mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <Button onClick={resetApp} variant="outline">
+                ← Start Over
+              </Button>
+              <Button onClick={proceedToGeneration} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                Proceed to Content Generation →
+              </Button>
+            </div>
+            
+            {/* Video Info */}
+            <Card className="mb-8">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  {extractedContent.metadata.thumbnails?.[0] && (
+                    <img
+                      src={extractedContent.metadata.thumbnails[0]}
+                      alt="Video thumbnail"
+                      className="w-32 h-24 object-cover rounded-lg shadow-md"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                      {extractedContent.metadata.title}
+                    </h1>
+                    <p className="text-gray-600 mb-2">by {extractedContent.metadata.author}</p>
+                    <div className="flex gap-4 text-sm text-gray-500">
+                      <span>Duration: {extractedContent.metadata.duration}</span>
+                      <span>•</span>
+                      <span>Transcript: {analysis.wordCount.toLocaleString()} words</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Analysis Component */}
+          <div className="max-w-6xl mx-auto">
+            <TranscriptAnalysisComponent
+              analysis={analysis}
+              fullTranscript={extractedContent.fullTranscript}
+              onAnalysisUpdate={(updatedAnalysis) => setAnalysis(updatedAnalysis)}
+            />
+          </div>
+
+          {/* Footer Actions */}
+          <div className="max-w-6xl mx-auto mt-8 text-center">
+            <p className="text-gray-600 mb-4">
+              Review the analysis above, then proceed to generate platform-specific content
+            </p>
+            <Button onClick={proceedToGeneration} size="lg" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+              Generate Content for All Platforms
+            </Button>
           </div>
         </div>
       </div>
