@@ -86,7 +86,13 @@ async function getVideoMetadata(videoId: string): Promise<VideoMetadata> {
  */
 async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> {
   try {
+    console.log('Fetching transcript for video ID:', videoId);
     const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    console.log('Transcript fetched, segments:', transcript?.length || 0);
+    
+    if (!transcript || transcript.length === 0) {
+      throw new Error('No transcript segments returned from YouTube');
+    }
     
     return transcript.map((item: { text: string; offset: number; duration: number }) => ({
       text: item.text,
@@ -94,10 +100,10 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
       duration: item.duration
     }));
   } catch (error) {
-    console.error('Failed to extract transcript:', error);
+    console.error('Failed to extract transcript for video ID:', videoId, error);
     throw new Error(
       'Failed to extract transcript. The video may not have captions available, ' +
-      'or the video might be private/restricted.'
+      'or the video might be private/restricted. Error: ' + (error instanceof Error ? error.message : String(error))
     );
   }
 }
@@ -133,7 +139,13 @@ export async function extractYouTubeContent(url: string): Promise<ExtractedConte
     const fullTranscript = combineTranscript(transcriptSegments);
 
     if (!fullTranscript || fullTranscript.length < 10) {
-      throw new Error('Transcript is too short or empty. Video may not have proper captions.');
+      throw new Error(
+        'This video does not have accessible captions/subtitles. Please try a different video that has:\n' +
+        '• Auto-generated captions enabled\n' +
+        '• Manual subtitles/closed captions\n' +
+        '• Public visibility (not private or restricted)\n\n' +
+        'Educational or tutorial videos typically have better caption availability.'
+      );
     }
 
     return {
