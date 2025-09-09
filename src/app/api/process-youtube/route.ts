@@ -109,6 +109,8 @@ export async function GET(request: NextRequest) {
       data: {
         videoId: extractedContent.videoId,
         metadata: extractedContent.metadata,
+        fullTranscript: extractedContent.fullTranscript,
+        transcript: extractedContent.transcript,
         transcriptLength: extractedContent.fullTranscript.length,
         isValid: true
       }

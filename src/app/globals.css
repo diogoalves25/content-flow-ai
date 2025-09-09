@@ -361,6 +361,37 @@ body {
   .card .text-muted-foreground, .premium-card .text-muted-foreground {
     color: #404040 !important;
   }
+  
+  /* Button text visibility fixes */
+  button {
+    color: white !important;
+  }
+  
+  /* Ensure buttons have visible text */
+  .bg-black button, .bg-gray-900 button, .bg-slate-900 button {
+    color: white !important;
+  }
+  
+  /* Primary buttons should have white text */
+  .bg-blue-600 button, .bg-purple-600 button, .bg-indigo-600 button {
+    color: white !important;
+  }
+  
+  /* Header text should be visible */
+  header *, nav * {
+    color: white !important;
+  }
+  
+  /* Input field text */
+  input, textarea {
+    color: #171717 !important;
+    background-color: white !important;
+  }
+  
+  /* Placeholder text */
+  input::placeholder, textarea::placeholder {
+    color: #666666 !important;
+  }
 }
 
 /* Smooth transitions for all interactive elements */

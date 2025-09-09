@@ -91,6 +91,11 @@ export default function HomePage() {
 
     setGeneratingPlatform(platform);
 
+    console.log('About to generate content for:', platform);
+    console.log('Full transcript being sent:', extractedContent.fullTranscript.substring(0, 200) + '...');
+    console.log('Full transcript length:', extractedContent.fullTranscript.length);
+    console.log('Is fallback message?', extractedContent.fullTranscript.includes('[No transcript available'));
+
     try {
       const response = await fetch('/api/generate-content', {
         method: 'POST',
@@ -316,10 +321,11 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
       <div className="container mx-auto px-4 py-8">
-        {/* Header with video info */}
+        {/* Header with video info and transcript display */}
         {extractedContent && (
-          <div className="mb-8">
-            <Card>
+          <div className="mb-8 space-y-6">
+            {/* Video Info Card */}
+            <Card className="bg-white border-gray-200">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   {extractedContent.metadata.thumbnails?.[0] && (
@@ -330,21 +336,89 @@ export default function HomePage() {
                     />
                   )}
                   <div className="flex-1">
-                    <h1 className="text-xl font-semibold mb-2">
+                    <h1 className="text-xl font-semibold mb-2 text-gray-900">
                       {extractedContent.metadata.title}
                     </h1>
-                    <p className="text-muted-foreground text-sm mb-2">
+                    <p className="text-gray-600 text-sm mb-2">
                       by {extractedContent.metadata.author} • {extractedContent.metadata.duration}
                     </p>
                     <div className="flex items-center gap-4">
-                      <Badge variant="secondary">
+                      <Badge variant="secondary" className="bg-gray-100 text-gray-800">
                         {extractedContent.fullTranscript.split(' ').length} words
                       </Badge>
-                      <Button size="sm" variant="outline" onClick={resetApp}>
+                      <Button size="sm" variant="outline" onClick={resetApp} className="border-gray-300 text-gray-700 hover:bg-gray-50">
                         New Video
                       </Button>
                     </div>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Transcript Display */}
+            <Card className="bg-white border-gray-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-gray-900">
+                  <FileText className="h-5 w-5" />
+                  Extracted Transcript
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+                  {extractedContent.fullTranscript.includes('[No transcript available') ? (
+                    <div className="space-y-6">
+                      <div className="text-blue-700 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertCircle className="h-5 w-5" />
+                          <strong>Manual transcript input required</strong>
+                        </div>
+                        <p className="text-sm mb-3">
+                          YouTube's automatic transcript extraction is currently limited. To generate high-quality content, please paste the video transcript below.
+                        </p>
+                        <details className="text-xs text-blue-600">
+                          <summary className="cursor-pointer hover:text-blue-800">How to get the transcript manually</summary>
+                          <div className="mt-2 pl-4 border-l-2 border-blue-300">
+                            <p>1. Open the YouTube video in a browser</p>
+                            <p>2. Click the "..." menu below the video</p>
+                            <p>3. Select "Show transcript"</p>
+                            <p>4. Copy the text and paste it below</p>
+                          </div>
+                        </details>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <label className="block text-base font-semibold text-gray-900">
+                          Paste Video Transcript:
+                        </label>
+                        <textarea
+                          className="w-full p-4 border-2 border-blue-300 rounded-lg bg-white text-gray-900 min-h-40 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          placeholder="Paste the complete video transcript here...
+
+For best results, include the full transcript with natural breaks between sentences. This will be used to generate engaging content for your social media platforms."
+                          onChange={(e) => {
+                            const newTranscript = e.target.value;
+                            if (newTranscript.trim()) {
+                              setExtractedContent(prev => prev ? {
+                                ...prev,
+                                fullTranscript: newTranscript,
+                                transcript: [{ text: newTranscript, offset: 0, duration: 0 }]
+                              } : null);
+                            }
+                          }}
+                        />
+                        <div className="flex items-center justify-between text-sm text-gray-600">
+                          <span>Content generation will use this transcript</span>
+                          <span className="text-xs text-gray-500">💡 Longer transcripts = better content</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="prose prose-sm max-w-none">
+                      <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                        {extractedContent.fullTranscript}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -371,7 +445,7 @@ export default function HomePage() {
             { 
               key: 'instagram', 
               icon: Instagram, 
-              label: 'Instagram Caption',
+              label: 'Instagram Post',
               gradient: 'from-pink-500 via-purple-500 to-orange-500',
               bgGradient: 'from-pink-50 to-purple-50'
             },
@@ -462,7 +536,127 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Add other platform outputs here */}
+          {/* Instagram Content Display */}
+          {generations.instagram && (
+            <div className="premium-card p-8 animate-fade-in-up">
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 via-purple-500 to-orange-500 flex items-center justify-center shadow-lg">
+                    <Instagram className="h-5 w-5 text-white drop-shadow-sm" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Instagram Post
+                  </h2>
+                </div>
+                <p className="text-gray-600 text-lg">
+                  Engaging post content optimized for Instagram's visual platform
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-pink-50 to-purple-50 p-6 rounded-xl border border-pink-100">
+                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <Instagram className="h-4 w-4" />
+                    Instagram Post
+                  </h3>
+                  <div className="prose prose-sm max-w-none">
+                    <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                      {(generations.instagram as any)?.content || 'Generated Instagram content'}
+                    </p>
+                  </div>
+                </div>
+
+                {(generations.instagram as any)?.hashtags && (
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-gray-900 mb-2">Hashtags:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {(generations.instagram as any).hashtags.map((tag: string, index: number) => (
+                        <span key={index} className="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(generations.instagram as any)?.engagementTips && (
+                  <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                    <h4 className="font-medium text-orange-900 mb-2">💡 Engagement Tips:</h4>
+                    <ul className="text-orange-800 text-sm space-y-1">
+                      {(generations.instagram as any).engagementTips.map((tip: string, index: number) => (
+                        <li key={index}>• {tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                <div className="mt-6 flex justify-end">
+                  <Button
+                    onClick={() => handleCopy((generations.instagram as any)?.content || '', 'thread')}
+                    className="bg-gradient-to-r from-pink-500 via-purple-500 to-orange-500 hover:from-pink-600 hover:via-purple-600 hover:to-orange-600 text-white rounded-xl shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Content
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Blog Content Display */}
+          {generations.blog && (
+            <div className="premium-card p-8 animate-fade-in-up">
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center shadow-lg">
+                    <FileText className="h-5 w-5 text-white drop-shadow-sm" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Blog Article
+                  </h2>
+                </div>
+                <p className="text-gray-600 text-lg">
+                  Complete blog post ready for publication
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                {(generations.blog as any)?.title && (
+                  <div className="border-l-4 border-gray-500 pl-4">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      {(generations.blog as any).title}
+                    </h3>
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      {(generations.blog as any)?.wordCount && (
+                        <span>📝 {(generations.blog as any).wordCount} words</span>
+                      )}
+                      {(generations.blog as any)?.readTime && (
+                        <span>⏱️ {(generations.blog as any).readTime}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                  <div className="prose prose-lg max-w-none">
+                    <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                      {(generations.blog as any)?.content || 'Generated blog content'}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-6 flex justify-end">
+                  <Button
+                    onClick={() => handleCopy((generations.blog as any)?.content || '', 'thread')}
+                    className="bg-gradient-to-r from-gray-600 to-gray-800 hover:from-gray-700 hover:to-gray-900 text-white rounded-xl shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Article
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {error && (

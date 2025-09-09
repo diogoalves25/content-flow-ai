@@ -49,6 +49,10 @@ export async function POST(request: NextRequest) {
     let promptUsed = '';
 
     console.log(`Generating ${platform} content...`);
+    console.log('Content received:', content.substring(0, 200) + '...');
+    console.log('Content length:', content.length);
+    console.log('Is content a fallback message?', content.includes('[No transcript available'));
+    console.log('Platform:', platform);
 
     switch (platform) {
       case 'twitter':

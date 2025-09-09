@@ -1,5 +1,4 @@
 import { YoutubeTranscript } from 'youtube-transcript';
-import ytdl from 'ytdl-core';
 
 export interface VideoMetadata {
   title: string;
@@ -57,12 +56,11 @@ export function isValidYouTubeUrl(url: string): boolean {
  */
 async function getVideoMetadata(videoId: string): Promise<VideoMetadata> {
   try {
-    // First try oEmbed API
     const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
     const response = await fetch(oembedUrl);
     
     if (!response.ok) {
-      throw new Error('oEmbed failed, trying alternative method...');
+      throw new Error('Failed to fetch video metadata');
     }
 
     const data = await response.json();
@@ -74,31 +72,12 @@ async function getVideoMetadata(videoId: string): Promise<VideoMetadata> {
       thumbnails: [data.thumbnail_url].filter(Boolean)
     };
   } catch (error) {
-    console.warn('oEmbed failed, trying ytdl-core...', error);
-    
-    // Fallback to ytdl-core
-    try {
-      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      const info = await ytdl.getBasicInfo(videoUrl);
-      
-      return {
-        title: info.videoDetails.title || 'Unknown Title',
-        author: info.videoDetails.author?.name || 'Unknown Author',
-        duration: info.videoDetails.lengthSeconds ? 
-          formatDuration(parseInt(info.videoDetails.lengthSeconds)) : 'Unknown',
-        views: info.videoDetails.viewCount,
-        uploadDate: info.videoDetails.uploadDate,
-        description: info.videoDetails.description?.substring(0, 500),
-        thumbnails: info.videoDetails.thumbnails?.map(t => t.url) || []
-      };
-    } catch (ytdlError) {
-      console.warn('ytdl-core also failed:', ytdlError);
-      return {
-        title: 'Unknown Title',
-        author: 'Unknown Author',
-        duration: 'Unknown'
-      };
-    }
+    console.warn('Failed to fetch video metadata:', error);
+    return {
+      title: 'Unknown Title',
+      author: 'Unknown Author',
+      duration: 'Unknown'
+    };
   }
 }
 
@@ -117,50 +96,32 @@ function formatDuration(seconds: number): string {
 }
 
 /**
- * Extract transcript from YouTube video
+ * Extract transcript from YouTube video using youtube-transcript package
  */
 async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> {
   try {
-    console.log('Fetching transcript for video ID:', videoId);
+    console.log('Extracting transcript for video ID:', videoId);
     
-    // Try multiple approaches to get transcripts
-    let transcript = null;
+    // Use youtube-transcript package - simple and reliable
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
     
-    try {
-      // First try: Default approach
-      transcript = await YoutubeTranscript.fetchTranscript(videoId);
-      console.log('Default fetch - transcript segments:', transcript?.length || 0);
-    } catch (error) {
-      console.log('Default fetch failed, trying with language options...');
-      
-      try {
-        // Second try: With language options
-        transcript = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'en' });
-        console.log('Language-specific fetch - transcript segments:', transcript?.length || 0);
-      } catch {
-        console.log('Language-specific fetch failed, trying any available language...');
-        
-        // Third try: Get any available transcript
-        transcript = await YoutubeTranscript.fetchTranscript(videoId, { lang: '' });
-        console.log('Any language fetch - transcript segments:', transcript?.length || 0);
-      }
+    if (!transcript || !Array.isArray(transcript) || transcript.length === 0) {
+      throw new Error('No transcript available for this video');
     }
     
-    if (!transcript || transcript.length === 0) {
-      throw new Error('No transcript segments returned from YouTube after trying multiple methods');
-    }
+    // Convert to our format
+    const segments: TranscriptSegment[] = transcript.map((item: any) => ({
+      text: String(item.text || '').trim(),
+      offset: typeof item.offset === 'number' ? item.offset : 0,
+      duration: typeof item.duration === 'number' ? item.duration : 0
+    })).filter(segment => segment.text.length > 0);
     
-    return transcript.map((item: { text: string; offset: number; duration: number }) => ({
-      text: item.text,
-      offset: item.offset,
-      duration: item.duration
-    }));
+    console.log(`Successfully extracted ${segments.length} transcript segments`);
+    return segments;
+    
   } catch (error) {
-    console.error('Failed to extract transcript for video ID:', videoId, error);
-    throw new Error(
-      'Failed to extract transcript. The video may not have captions available, ' +
-      'or the video might be private/restricted. Error: ' + (error instanceof Error ? error.message : String(error))
-    );
+    console.error('Failed to extract transcript:', error);
+    throw new Error('This video does not have transcript available or captions are disabled');
   }
 }
 
@@ -186,48 +147,13 @@ export async function extractYouTubeContent(url: string): Promise<ExtractedConte
   }
 
   try {
-    // Get metadata first
-    const metadata = await getVideoMetadata(videoId);
+    // Get metadata and transcript concurrently
+    const [metadata, transcriptSegments] = await Promise.all([
+      getVideoMetadata(videoId),
+      extractTranscript(videoId)
+    ]);
     
-    // Try to get transcript, but don't fail if it's not available
-    let transcriptSegments: TranscriptSegment[] = [];
-    let fullTranscript = '';
-    
-    try {
-      transcriptSegments = await extractTranscript(videoId);
-      fullTranscript = combineTranscript(transcriptSegments);
-    } catch (transcriptError) {
-      console.warn('Transcript extraction failed, continuing with metadata only:', transcriptError);
-      // Set fullTranscript to empty so the fallback logic below kicks in
-      fullTranscript = '';
-    }
-
-    if (!fullTranscript || fullTranscript.length < 10) {
-      console.warn('No transcript available, but video metadata was fetched successfully');
-      // Instead of throwing an error, return basic info with note about transcript
-      return {
-        videoId,
-        url: `https://www.youtube.com/watch?v=${videoId}`,
-        metadata: {
-          ...metadata,
-          duration: metadata.duration || 'Unknown'
-        },
-        transcript: [],
-        fullTranscript: `[No transcript available for this video]
-
-Video Title: ${metadata.title}
-Author: ${metadata.author}
-Duration: ${metadata.duration}
-
-This video does not have accessible captions/subtitles. You can still generate content based on the title and description, but transcript-based content generation won't be available.
-
-To get better results, try videos with:
-• Auto-generated captions enabled
-• Manual subtitles/closed captions  
-• Educational or tutorial content (typically has better caption availability)`,
-        summary: `Video: "${metadata.title}" by ${metadata.author}. No transcript available, but you can still generate content based on the title and video metadata.`
-      };
-    }
+    const fullTranscript = combineTranscript(transcriptSegments);
 
     return {
       videoId,
