@@ -61,24 +61,55 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   console.log('🚀 Using modern @danielxceron/youtube-transcript with Innertube API');
   
-  const transcriptData = await ModernYoutubeTranscript.fetchTranscript(videoUrl);
-  
-  if (!transcriptData || !Array.isArray(transcriptData) || transcriptData.length === 0) {
-    throw new Error('No transcript data returned from modern API');
+  try {
+    // Try with different language configurations for better compatibility
+    const configs = [
+      { lang: 'en' },
+      { lang: 'en-US' },
+      undefined, // Auto-detect
+      { lang: 'en-GB' },
+      { lang: '' }
+    ];
+    
+    let transcriptData = null;
+    let lastError = null;
+    
+    for (const config of configs) {
+      try {
+        console.log(`🔄 Trying config:`, config || 'auto-detect');
+        transcriptData = await ModernYoutubeTranscript.fetchTranscript(videoUrl, config);
+        
+        if (transcriptData && Array.isArray(transcriptData) && transcriptData.length > 0) {
+          console.log(`✅ SUCCESS with config:`, config || 'auto-detect');
+          break;
+        }
+      } catch (error) {
+        lastError = error;
+        console.log(`⚠️ Config ${JSON.stringify(config)} failed:`, error instanceof Error ? error.message : 'Unknown error');
+        // Continue to next config
+      }
+    }
+    
+    if (!transcriptData || !Array.isArray(transcriptData) || transcriptData.length === 0) {
+      throw lastError || new Error('No transcript data returned from modern API with any configuration');
+    }
+
+    console.log(`✅ SUCCESS: Extracted ${transcriptData.length} transcript segments using modern API`);
+    console.log(`📝 First segment sample: "${transcriptData[0].text?.substring(0, 100)}..."`);
+    
+    // Convert to our format
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const segments: TranscriptSegment[] = transcriptData.map((item: any) => ({
+      text: item.text || '',
+      offset: parseFloat(item.offset?.toString() || '0'),
+      duration: parseFloat(item.duration?.toString() || '0')
+    }));
+
+    return segments;
+  } catch (error) {
+    console.error('🚨 Modern extraction failed:', error);
+    throw error;
   }
-
-  console.log(`✅ SUCCESS: Extracted ${transcriptData.length} transcript segments using modern API`);
-  console.log(`📝 First segment sample: "${transcriptData[0].text?.substring(0, 100)}..."`);
-  
-  // Convert to our format
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const segments: TranscriptSegment[] = transcriptData.map((item: any) => ({
-    text: item.text || '',
-    offset: parseFloat(item.offset?.toString() || '0'),
-    duration: parseFloat(item.duration?.toString() || '0')
-  }));
-
-  return segments;
 }
 
 /**
