@@ -83,33 +83,91 @@ async function getVideoMetadata(videoId: string): Promise<VideoMetadata> {
 
 
 /**
- * Extract transcript from YouTube video using youtube-transcript package
+ * Extract transcript from YouTube video using multiple fallback methods
  */
 async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> {
-  try {
-    console.log('Extracting transcript for video ID:', videoId);
+  console.log('Extracting transcript for video ID:', videoId);
+  
+  // Multiple extraction strategies to try
+  const strategies = [
+    // Strategy 1: Default English
+    async () => {
+      console.log('Trying strategy 1: Default English');
+      return await YoutubeTranscript.fetchTranscript(videoId);
+    },
     
-    // Use youtube-transcript package - simple and reliable
-    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    // Strategy 2: Explicit English with config
+    async () => {
+      console.log('Trying strategy 2: Explicit English with config');
+      return await YoutubeTranscript.fetchTranscript(videoId, {
+        lang: 'en'
+      });
+    },
     
-    if (!transcript || !Array.isArray(transcript) || transcript.length === 0) {
-      throw new Error('No transcript available for this video');
+    // Strategy 3: Auto-generated English
+    async () => {
+      console.log('Trying strategy 3: Auto-generated English');
+      return await YoutubeTranscript.fetchTranscript(videoId, {
+        lang: 'en-US'
+      });
+    },
+    
+    // Strategy 4: Any available language
+    async () => {
+      console.log('Trying strategy 4: Any available language');
+      return await YoutubeTranscript.fetchTranscript(videoId, {
+        lang: ''
+      });
     }
-    
-    // Convert to our format
-    const segments: TranscriptSegment[] = transcript.map((item: { text?: string; offset?: number; duration?: number }) => ({
-      text: String(item.text || '').trim(),
-      offset: typeof item.offset === 'number' ? item.offset : 0,
-      duration: typeof item.duration === 'number' ? item.duration : 0
-    })).filter(segment => segment.text.length > 0);
-    
-    console.log(`Successfully extracted ${segments.length} transcript segments`);
-    return segments;
-    
-  } catch (error) {
-    console.error('Failed to extract transcript:', error);
-    throw new Error('This video does not have transcript available or captions are disabled');
+  ];
+
+  let lastError: Error | null = null;
+  
+  // Try each strategy
+  for (let i = 0; i < strategies.length; i++) {
+    try {
+      const transcript = await strategies[i]();
+      
+      if (transcript && Array.isArray(transcript) && transcript.length > 0) {
+        // Convert to our format
+        const segments: TranscriptSegment[] = transcript.map((item: { 
+          text?: string; 
+          offset?: number; 
+          duration?: number;
+          start?: number;
+        }) => ({
+          text: String(item.text || '').trim(),
+          offset: typeof item.offset === 'number' ? item.offset : 
+                  typeof item.start === 'number' ? item.start : 0,
+          duration: typeof item.duration === 'number' ? item.duration : 0
+        })).filter(segment => segment.text.length > 0);
+        
+        if (segments.length > 0) {
+          console.log(`Successfully extracted ${segments.length} transcript segments using strategy ${i + 1}`);
+          return segments;
+        }
+      }
+      
+      throw new Error('Empty or invalid transcript data');
+      
+    } catch (error) {
+      console.warn(`Strategy ${i + 1} failed:`, error);
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      // Wait a bit before trying next strategy
+      if (i < strategies.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
   }
+  
+  // If all strategies failed, throw the last error
+  console.error('All transcript extraction strategies failed. Last error:', lastError);
+  throw new Error(
+    lastError?.message?.includes('Could not retrieve') 
+      ? 'This video does not have captions enabled or transcripts are not available'
+      : 'Failed to extract transcript. The video may not have captions enabled.'
+  );
 }
 
 /**
@@ -142,13 +200,26 @@ export async function extractYouTubeContent(url: string): Promise<ExtractedConte
     let fullTranscript = '';
     
     try {
+      console.log(`Starting transcript extraction for video: ${metadata.title}`);
       transcriptSegments = await extractTranscript(videoId);
       fullTranscript = combineTranscript(transcriptSegments);
-      console.log(`Successfully extracted transcript with ${transcriptSegments.length} segments`);
+      console.log(`✅ Successfully extracted transcript with ${transcriptSegments.length} segments (${fullTranscript.length} characters)`);
     } catch (transcriptError) {
-      console.warn('Transcript extraction failed:', transcriptError);
-      // Provide fallback transcript message
-      fullTranscript = '[No transcript available for this video. Please paste the transcript manually in the next step to generate high-quality content.]';
+      console.warn('❌ All transcript extraction methods failed:', transcriptError);
+      
+      // Provide detailed fallback message with instructions
+      const errorMessage = transcriptError instanceof Error ? transcriptError.message : 'Unknown error';
+      fullTranscript = `[Automatic transcript extraction failed: ${errorMessage}
+
+To get high-quality content generation, please:
+1. Go to the YouTube video
+2. Click the "..." menu below the video  
+3. Select "Show transcript"
+4. Copy the full transcript
+5. Paste it in the manual input area below
+
+This will ensure the best possible content generation results.]`;
+      
       transcriptSegments = [{
         text: fullTranscript,
         offset: 0,

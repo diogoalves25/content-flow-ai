@@ -77,6 +77,7 @@ model Project {
   
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   generations Generation[]
+  transcriptAnalyses TranscriptAnalysis[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -101,6 +102,26 @@ model Generation {
   
   @@index([projectId])
   @@index([platform])
+}
+
+model TranscriptAnalysis {
+  id                String   @id @default(cuid())
+  projectId         String
+  originalTranscript String  // The original transcript text
+  executiveSummary  String   // 2-3 sentence summary
+  keyPoints         String   // JSON array of key points
+  actionableInsights String  // JSON array of actionable insights
+  notableQuotes     String   // JSON array of notable quotes
+  mainTopics        String   // JSON array of main topics
+  contentStructure  String   // JSON object with intro, sections, conclusion
+  metadata          String   // JSON object with word count, duration, etc
+  
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([projectId])
 }
 
 model Template {
