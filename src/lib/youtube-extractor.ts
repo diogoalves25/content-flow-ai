@@ -56,18 +56,24 @@ export function isValidYouTubeUrl(url: string): boolean {
  * Extract transcript using modern Innertube API
  */
 async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> {
-  console.log('📹 Simple extraction for video ID:', videoId);
+  console.log('📹 InnerTube extraction for video ID:', videoId);
   
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   
   try {
-    // Simple Alex Finn approach - just fetch transcript directly
-    const transcript = await YoutubeTranscript.fetchTranscript(videoUrl);
+    // Try InnerTube method first (more reliable on Vercel)
+    console.log('🚀 Trying fetchTranscriptWithInnerTube...');
+    let transcript = await YoutubeTranscript.fetchTranscriptWithInnerTube(videoUrl);
+    
+    if (!transcript || transcript.length === 0) {
+      console.log('⚠️ InnerTube method returned empty, trying default method...');
+      transcript = await YoutubeTranscript.fetchTranscript(videoUrl);
+    }
     
     console.log(`✅ SUCCESS: Got ${transcript?.length || 0} transcript segments`);
     
     if (!transcript || transcript.length === 0) {
-      throw new Error('No transcript found');
+      throw new Error('No transcript found with either method');
     }
     
     // Convert to our format
