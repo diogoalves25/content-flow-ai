@@ -55,37 +55,56 @@ export function isValidYouTubeUrl(url: string): boolean {
  * Parse YouTube caption XML into transcript segments
  */
 function parseYouTubeCaptionXML(xmlContent: string): TranscriptSegment[] {
+  console.log('🔍 XML Parser Debug - Content length:', xmlContent.length);
+  console.log('🔍 XML contains <text tags:', xmlContent.includes('<text'));
+  
   const segments: TranscriptSegment[] = [];
   
-  // Enhanced regex to capture different XML formats
-  const textRegex = /<text[^>]*start="([^"]*)"[^>]*dur="([^"]*)"[^>]*>([^<]*)<\/text>/g;
-  const altRegex = /<text[^>]*start="([^"]*)"[^>]*duration="([^"]*)"[^>]*>([^<]*)<\/text>/g;
-  const simpleRegex = /<text[^>]*>([^<]*)<\/text>/g;
-  
-  let match;
-  let segmentIndex = 0;
-  
-  // Try primary format with start and dur
-  while ((match = textRegex.exec(xmlContent)) !== null) {
-    const startTime = parseFloat(match[1]) * 1000;
-    const duration = parseFloat(match[2]) * 1000;
-    const text = cleanXMLText(match[3]);
+  // Multiple regex patterns to handle different XML formats
+  const patterns = [
+    // Standard YouTube format: <text start="123.45" dur="2.34">Text content</text>
+    /<text[^>]*start="([^"]*)"[^>]*dur="([^"]*)"[^>]*>(.*?)<\/text>/g,
     
-    if (text.length > 0) {
-      segments.push({
-        text,
-        offset: startTime,
-        duration
-      });
-    }
-  }
+    // Alternative format: <text start="123.45" duration="2.34">Text content</text>  
+    /<text[^>]*start="([^"]*)"[^>]*duration="([^"]*)"[^>]*>(.*?)<\/text>/g,
+    
+    // Without closing tag: <text start="123.45" dur="2.34">Text content
+    /<text[^>]*start="([^"]*)"[^>]*dur="([^"]*)"[^>]*>([^<]*)/g,
+    
+    // Simple format with just text: <text>Content</text>
+    /<text[^>]*>(.*?)<\/text>/g,
+    
+    // Self-closing format: <text start="123" dur="2" text="Content"/>
+    /<text[^>]*start="([^"]*)"[^>]*dur="([^"]*)"[^>]*text="([^"]*)"/g
+  ];
   
-  // If no segments found, try alternative format
-  if (segments.length === 0) {
-    while ((match = altRegex.exec(xmlContent)) !== null) {
-      const startTime = parseFloat(match[1]) * 1000;
-      const duration = parseFloat(match[2]) * 1000;
-      const text = cleanXMLText(match[3]);
+  let totalMatches = 0;
+  
+  for (let i = 0; i < patterns.length; i++) {
+    const regex = patterns[i];
+    let match;
+    let matchCount = 0;
+    
+    console.log(`🔍 Trying pattern ${i + 1}:`, regex.toString());
+    
+    while ((match = regex.exec(xmlContent)) !== null) {
+      matchCount++;
+      totalMatches++;
+      
+      let startTime = 0;
+      let duration = 3000; // Default 3 seconds
+      let text = '';
+      
+      if (match.length === 4) {
+        // Has start, dur, and text
+        startTime = parseFloat(match[1]) * 1000;
+        duration = parseFloat(match[2]) * 1000;
+        text = cleanXMLText(match[3]);
+      } else if (match.length === 2) {
+        // Just text content
+        text = cleanXMLText(match[1]);
+        startTime = segments.length * 3000; // Estimate timing
+      }
       
       if (text.length > 0) {
         segments.push({
@@ -93,27 +112,28 @@ function parseYouTubeCaptionXML(xmlContent: string): TranscriptSegment[] {
           offset: startTime,
           duration
         });
+        
+        if (matchCount <= 3) {
+          console.log(`📝 Sample match ${matchCount}:`, { text: text.substring(0, 50), startTime, duration });
+        }
       }
+    }
+    
+    console.log(`🔍 Pattern ${i + 1} found ${matchCount} matches`);
+    
+    if (segments.length > 0) {
+      console.log(`✅ Success with pattern ${i + 1}! Found ${segments.length} segments total`);
+      break; // Stop at first successful pattern
     }
   }
   
-  // Last resort: extract all text without timing (still useful)
+  console.log(`📊 XML Parser Results: ${segments.length} segments from ${totalMatches} total matches`);
+  
   if (segments.length === 0) {
-    while ((match = simpleRegex.exec(xmlContent)) !== null) {
-      const text = cleanXMLText(match[1]);
-      
-      if (text.length > 0) {
-        segments.push({
-          text,
-          offset: segmentIndex * 3000, // Estimate 3 seconds per segment
-          duration: 3000
-        });
-        segmentIndex++;
-      }
-    }
+    console.log('❌ No segments extracted. Raw XML sample:');
+    console.log(xmlContent.substring(0, 1000));
   }
   
-  console.log(`📝 Parsed ${segments.length} transcript segments from XML`);
   return segments;
 }
 
@@ -228,6 +248,10 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
         const xmlContent = await captionResponse.text();
         console.log('✅ Got caption XML, parsing...');
         
+        // DEBUG: Log actual XML content to see structure
+        console.log('🔍 XML Sample (first 500 chars):', xmlContent.substring(0, 500));
+        console.log('🔍 XML Sample (last 500 chars):', xmlContent.substring(Math.max(0, xmlContent.length - 500)));
+        
         return parseYouTubeCaptionXML(xmlContent);
         
       } catch (error) {
@@ -240,13 +264,13 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
     async () => {
       console.log('📚 Strategy 2: youtube-transcript (enhanced)');
       try {
-        // Try with different language configurations
+        // Try with different language configurations - the logs show 'en' is available!
         const configs = [
+          undefined, // Auto-detect first (this often works best)
           { lang: 'en' },
+          { lang: '' }, // Any language
           { lang: 'en-US' }, 
-          { lang: 'en-GB' },
-          undefined, // Auto-detect
-          { lang: '' } // Any language
+          { lang: 'en-GB' }
         ];
         
         for (const config of configs) {
@@ -254,14 +278,30 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
             console.log(`🔄 Trying config:`, config || 'auto-detect');
             const transcript = await YoutubeTranscript.fetchTranscript(videoId, config);
             
+            console.log(`📊 Raw transcript result:`, {
+              hasData: !!transcript,
+              isArray: Array.isArray(transcript),
+              length: transcript?.length,
+              firstItem: transcript?.[0]
+            });
+            
             if (transcript && transcript.length > 0) {
               console.log(`✅ Success with config ${JSON.stringify(config)}: ${transcript.length} segments`);
+              console.log(`📝 First few segments:`, transcript.slice(0, 3));
+              
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              return transcript.map((item: any) => ({
+              const processedSegments = transcript.map((item: any) => ({
                 text: String(item.text || '').trim(),
-                offset: typeof item.offset === 'number' ? item.offset : 0,
-                duration: typeof item.duration === 'number' ? item.duration : 0
+                offset: typeof item.offset === 'number' ? item.offset : 
+                       typeof item.start === 'number' ? item.start * 1000 : 0, // Convert to ms
+                duration: typeof item.duration === 'number' ? item.duration : 
+                         typeof item.dur === 'number' ? item.dur * 1000 : 3000 // Convert to ms
               })).filter(segment => segment.text.length > 0);
+              
+              console.log(`🎯 Processed segments:`, processedSegments.length);
+              console.log(`📝 Sample processed:`, processedSegments.slice(0, 2));
+              
+              return processedSegments;
             }
           } catch (configError) {
             console.log(`⚠️ Config ${JSON.stringify(config)} failed:`, (configError as Error).message);
@@ -298,6 +338,10 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
         if (timedTextResponse.ok) {
           const xmlContent = await timedTextResponse.text();
           console.log('✅ Got timedtext XML, parsing...');
+          
+          // DEBUG: Log actual XML content
+          console.log('🔍 Timedtext XML Sample (first 500 chars):', xmlContent.substring(0, 500));
+          
           return parseYouTubeCaptionXML(xmlContent);
         }
         
