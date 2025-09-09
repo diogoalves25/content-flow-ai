@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateTwitterThread, TwitterGenerationOptions, TwitterThread } from '@/lib/generators/twitter-generator';
 import { generateLinkedInPost, LinkedInGenerationOptions, LinkedInPost } from '@/lib/generators/linkedin-generator';
+import { generateInstagramPost, InstagramGenerationOptions, InstagramPost } from '@/lib/generators/instagram-generator';
+import { generateBlogPost, BlogGenerationOptions, BlogPost } from '@/lib/generators/blog-generator';
 import { prisma } from '@/lib/prisma';
 
 interface GenerateContentRequest {
@@ -8,7 +10,7 @@ interface GenerateContentRequest {
   platform: 'twitter' | 'linkedin' | 'instagram' | 'blog';
   projectId?: string;
   userId?: string;
-  options?: TwitterGenerationOptions | LinkedInGenerationOptions | Record<string, unknown>;
+  options?: TwitterGenerationOptions | LinkedInGenerationOptions | InstagramGenerationOptions | BlogGenerationOptions | Record<string, unknown>;
 }
 
 export async function POST(request: NextRequest) {
@@ -45,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate content based on platform
-    let generatedContent: TwitterThread | LinkedInPost | Record<string, unknown>;
+    let generatedContent: TwitterThread | LinkedInPost | InstagramPost | BlogPost | Record<string, unknown>;
     let promptUsed = '';
 
     console.log(`Generating ${platform} content...`);
@@ -66,23 +68,12 @@ export async function POST(request: NextRequest) {
         break;
 
       case 'instagram':
-        // TODO: Implement Instagram generator
-        generatedContent = {
-          content: `🎬 ${content.slice(0, 100)}...\n\n#content #socialmedia #instagram`,
-          hashtags: ['#content', '#socialmedia', '#instagram'],
-          engagementTips: ['Post during peak hours', 'Use relevant hashtags', 'Include call-to-action']
-        };
+        generatedContent = await generateInstagramPost(content, options as InstagramGenerationOptions);
         promptUsed = 'instagram_post_v1';
         break;
 
       case 'blog':
-        // TODO: Implement Blog generator
-        generatedContent = {
-          title: 'Blog Post Title',
-          content: `# Blog Post\n\n${content}\n\n## Conclusion\n\nThis content provides valuable insights...`,
-          wordCount: content.split(' ').length,
-          readTime: Math.ceil(content.split(' ').length / 200) + ' min read'
-        };
+        generatedContent = await generateBlogPost(content, options as BlogGenerationOptions);
         promptUsed = 'blog_post_v1';
         break;
 
