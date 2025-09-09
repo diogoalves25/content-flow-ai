@@ -209,6 +209,7 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
         console.log(`📝 First segment sample: "${transcriptData[0].text?.substring(0, 100)}..."`);
         
         // Convert to our format
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const segments: TranscriptSegment[] = transcriptData.map((item: any) => ({
           text: item.text || '',
           offset: parseFloat(item.offset?.toString() || '0'),
@@ -248,7 +249,6 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
         }
         
         const playerResponse = JSON.parse(playerResponseMatch[1]);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const captionTracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
         
         if (!captionTracks || captionTracks.length === 0) {

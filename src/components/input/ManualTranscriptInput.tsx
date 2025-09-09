@@ -80,8 +80,8 @@ export function ManualTranscriptInput({ onSubmit, loading = false, className = '
               <strong>How to get YouTube transcripts:</strong>
               <ol className="mt-2 space-y-1 text-sm">
                 <li>1. Go to the YouTube video</li>
-                <li>2. Click the "..." (more) button below the video</li>
-                <li>3. Select "Show transcript"</li>
+                <li>2. Click the &quot;...&quot; (more) button below the video</li>
+                <li>3. Select &quot;Show transcript&quot;</li>
                 <li>4. Copy the full transcript text</li>
                 <li>5. Paste it in the textarea below</li>
               </ol>
