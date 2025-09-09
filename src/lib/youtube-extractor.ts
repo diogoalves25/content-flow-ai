@@ -52,6 +52,90 @@ export function isValidYouTubeUrl(url: string): boolean {
 }
 
 /**
+ * Parse YouTube caption XML into transcript segments
+ */
+function parseYouTubeCaptionXML(xmlContent: string): TranscriptSegment[] {
+  const segments: TranscriptSegment[] = [];
+  
+  // Enhanced regex to capture different XML formats
+  const textRegex = /<text[^>]*start="([^"]*)"[^>]*dur="([^"]*)"[^>]*>([^<]*)<\/text>/g;
+  const altRegex = /<text[^>]*start="([^"]*)"[^>]*duration="([^"]*)"[^>]*>([^<]*)<\/text>/g;
+  const simpleRegex = /<text[^>]*>([^<]*)<\/text>/g;
+  
+  let match;
+  let segmentIndex = 0;
+  
+  // Try primary format with start and dur
+  while ((match = textRegex.exec(xmlContent)) !== null) {
+    const startTime = parseFloat(match[1]) * 1000;
+    const duration = parseFloat(match[2]) * 1000;
+    const text = cleanXMLText(match[3]);
+    
+    if (text.length > 0) {
+      segments.push({
+        text,
+        offset: startTime,
+        duration
+      });
+    }
+  }
+  
+  // If no segments found, try alternative format
+  if (segments.length === 0) {
+    while ((match = altRegex.exec(xmlContent)) !== null) {
+      const startTime = parseFloat(match[1]) * 1000;
+      const duration = parseFloat(match[2]) * 1000;
+      const text = cleanXMLText(match[3]);
+      
+      if (text.length > 0) {
+        segments.push({
+          text,
+          offset: startTime,
+          duration
+        });
+      }
+    }
+  }
+  
+  // Last resort: extract all text without timing (still useful)
+  if (segments.length === 0) {
+    while ((match = simpleRegex.exec(xmlContent)) !== null) {
+      const text = cleanXMLText(match[1]);
+      
+      if (text.length > 0) {
+        segments.push({
+          text,
+          offset: segmentIndex * 3000, // Estimate 3 seconds per segment
+          duration: 3000
+        });
+        segmentIndex++;
+      }
+    }
+  }
+  
+  console.log(`📝 Parsed ${segments.length} transcript segments from XML`);
+  return segments;
+}
+
+/**
+ * Clean XML text content
+ */
+function cleanXMLText(text: string): string {
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/')
+    .replace(/\n/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * Get video metadata using YouTube oEmbed API (no API key required)
  */
 async function getVideoMetadata(videoId: string): Promise<VideoMetadata> {
@@ -83,176 +167,273 @@ async function getVideoMetadata(videoId: string): Promise<VideoMetadata> {
 
 
 /**
- * Extract transcript from YouTube video using multiple fallback methods
+ * Extract transcript from YouTube video using multiple robust fallback methods
  */
 async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> {
-  console.log('Extracting transcript for video ID:', videoId);
+  console.log('🚀 Starting transcript extraction for video ID:', videoId);
   
-  // Try direct fetch with different configurations
   const strategies = [
-    // Strategy 1: Use ytdl-core to get video info and captions
+    // Strategy 1: Direct YouTube timedtext API call
     async () => {
-      console.log('Trying strategy 1: ytdl-core');
+      console.log('📡 Strategy 1: Direct YouTube timedtext API');
       try {
-        // Dynamic import to avoid TypeScript issues
-        const ytdl = await import('ytdl-core');
+        // First get video page to extract caption data
         const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-        
-        console.log('Getting video info with ytdl-core...');
-        const info = await ytdl.default.getInfo(videoUrl);
-        
-        // Look for caption tracks - using any to handle complex ytdl-core types
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const captionTracks = (info as any).player_response?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-        
-        if (!captionTracks || !Array.isArray(captionTracks) || captionTracks.length === 0) {
-          throw new Error('No caption tracks found');
-        }
-        
-        console.log(`Found ${captionTracks.length} caption tracks`);
-        
-        // Prefer English captions, fallback to first available
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const selectedTrack = captionTracks.find((track: any) => 
-          track.languageCode === 'en' || (typeof track.languageCode === 'string' && track.languageCode.startsWith('en'))
-        ) || captionTracks[0];
-        
-        if (!selectedTrack) {
-          throw new Error('No valid caption track found');
-        }
-        
-        console.log(`Using caption track: ${selectedTrack.name?.simpleText || selectedTrack.languageCode}`);
-        
-        // Fetch caption content
-        const captionUrl = selectedTrack.baseUrl;
-        if (!captionUrl) {
-          throw new Error('No caption URL found');
-        }
-        
-        const response = await fetch(captionUrl);
-        const xmlText = await response.text();
-        
-        // Parse XML to extract text and timestamps
-        const segments: TranscriptSegment[] = [];
-        const textRegex = /<text start="([^"]*)" dur="([^"]*)"[^>]*>([^<]*)<\/text>/g;
-        let match;
-        
-        while ((match = textRegex.exec(xmlText)) !== null) {
-          const startTime = parseFloat(match[1]) * 1000; // Convert to milliseconds
-          const duration = parseFloat(match[2]) * 1000; // Convert to milliseconds
-          const text = match[3]
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&#39;/g, "'")
-            .trim();
-          
-          if (text) {
-            segments.push({
-              text,
-              offset: startTime,
-              duration
-            });
+        const pageResponse = await fetch(videoUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
           }
+        });
+        
+        if (!pageResponse.ok) {
+          throw new Error(`Failed to fetch video page: ${pageResponse.status}`);
         }
         
-        if (segments.length > 0) {
-          console.log(`Successfully extracted ${segments.length} transcript segments using ytdl-core`);
-          return segments;
+        const html = await pageResponse.text();
+        console.log('✅ Got video page, extracting caption info...');
+        
+        // Extract caption tracks from player response
+        const playerResponseMatch = html.match(/var ytInitialPlayerResponse = ({.*?});/);
+        if (!playerResponseMatch) {
+          throw new Error('Could not find player response in page');
         }
         
-        throw new Error('No valid transcript segments found in captions');
+        const playerResponse = JSON.parse(playerResponseMatch[1]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const captionTracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+        
+        if (!captionTracks || captionTracks.length === 0) {
+          throw new Error('No caption tracks found in player response');
+        }
+        
+        console.log(`🎯 Found ${captionTracks.length} caption tracks`);
+        
+        // Prefer English, fallback to first available
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const englishTrack = captionTracks.find((track: any) => 
+          track.languageCode === 'en' || track.languageCode?.startsWith('en')
+        );
+        const selectedTrack = englishTrack || captionTracks[0];
+        
+        console.log(`📝 Using track: ${selectedTrack.name?.simpleText || selectedTrack.languageCode}`);
+        
+        // Get caption content
+        const captionUrl = selectedTrack.baseUrl;
+        const captionResponse = await fetch(captionUrl);
+        
+        if (!captionResponse.ok) {
+          throw new Error(`Failed to fetch captions: ${captionResponse.status}`);
+        }
+        
+        const xmlContent = await captionResponse.text();
+        console.log('✅ Got caption XML, parsing...');
+        
+        return parseYouTubeCaptionXML(xmlContent);
         
       } catch (error) {
-        console.warn('ytdl-core strategy failed:', error);
+        console.warn('❌ Direct API strategy failed:', error);
         throw error;
       }
     },
     
-    // Strategy 2: Default youtube-transcript
+    // Strategy 2: youtube-transcript with custom config
     async () => {
-      console.log('Trying strategy 2: Default youtube-transcript');
-      return await YoutubeTranscript.fetchTranscript(videoId);
+      console.log('📚 Strategy 2: youtube-transcript (enhanced)');
+      try {
+        // Try with different language configurations
+        const configs = [
+          { lang: 'en' },
+          { lang: 'en-US' }, 
+          { lang: 'en-GB' },
+          undefined, // Auto-detect
+          { lang: '' } // Any language
+        ];
+        
+        for (const config of configs) {
+          try {
+            console.log(`🔄 Trying config:`, config || 'auto-detect');
+            const transcript = await YoutubeTranscript.fetchTranscript(videoId, config);
+            
+            if (transcript && transcript.length > 0) {
+              console.log(`✅ Success with config ${JSON.stringify(config)}: ${transcript.length} segments`);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              return transcript.map((item: any) => ({
+                text: String(item.text || '').trim(),
+                offset: typeof item.offset === 'number' ? item.offset : 0,
+                duration: typeof item.duration === 'number' ? item.duration : 0
+              })).filter(segment => segment.text.length > 0);
+            }
+          } catch (configError) {
+            console.log(`⚠️ Config ${JSON.stringify(config)} failed:`, (configError as Error).message);
+            continue;
+          }
+        }
+        
+        throw new Error('All youtube-transcript configurations failed');
+      } catch (error) {
+        console.warn('❌ youtube-transcript strategy failed:', error);
+        throw error;
+      }
     },
     
-    // Strategy 3: Explicit English
+    // Strategy 3: Alternative API approach with video metadata
     async () => {
-      console.log('Trying strategy 3: Explicit English');
-      return await YoutubeTranscript.fetchTranscript(videoId, { lang: 'en' });
+      console.log('🔍 Strategy 3: Alternative metadata extraction');
+      try {
+        // Try to get video info from oEmbed and cross-reference with transcript APIs
+        const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+        const oembedResponse = await fetch(oembedUrl);
+        
+        if (!oembedResponse.ok) {
+          throw new Error('Video not accessible via oEmbed');
+        }
+        
+        const oembedData = await oembedResponse.json();
+        console.log(`📹 Video confirmed: "${oembedData.title}" by ${oembedData.author_name}`);
+        
+        // Now try to get captions using a different approach
+        const timedTextUrl = `https://www.youtube.com/api/timedtext?lang=en&v=${videoId}`;
+        const timedTextResponse = await fetch(timedTextUrl);
+        
+        if (timedTextResponse.ok) {
+          const xmlContent = await timedTextResponse.text();
+          console.log('✅ Got timedtext XML, parsing...');
+          return parseYouTubeCaptionXML(xmlContent);
+        }
+        
+        throw new Error('No accessible caption endpoints found');
+      } catch (error) {
+        console.warn('❌ Alternative metadata strategy failed:', error);
+        throw error;
+      }
     },
     
-    // Strategy 4: Any available language
+    // Strategy 4: Last resort with ytdl-core (might fail in serverless)
     async () => {
-      console.log('Trying strategy 4: Any available language');
-      return await YoutubeTranscript.fetchTranscript(videoId, { lang: '' });
+      console.log('🔧 Strategy 4: ytdl-core (last resort)');
+      try {
+        const ytdl = await import('ytdl-core');
+        const info = await ytdl.default.getInfo(`https://www.youtube.com/watch?v=${videoId}`);
+        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const captionTracks = (info as any).player_response?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+        if (!captionTracks?.length) {
+          throw new Error('No caption tracks in ytdl response');
+        }
+        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const selectedTrack = captionTracks.find((track: any) => 
+          track.languageCode === 'en' || track.languageCode?.startsWith('en')
+        ) || captionTracks[0];
+        
+        const captionResponse = await fetch(selectedTrack.baseUrl);
+        const xmlContent = await captionResponse.text();
+        
+        return parseYouTubeCaptionXML(xmlContent);
+      } catch (error) {
+        console.warn('❌ ytdl-core strategy failed:', error);
+        throw error;
+      }
     }
   ];
 
   let lastError: Error | null = null;
+  const startTime = Date.now();
   
-  // Try each strategy
+  // Try each strategy with detailed logging
   for (let i = 0; i < strategies.length; i++) {
+    const strategyStartTime = Date.now();
+    console.log(`\n🎯 Attempting strategy ${i + 1}/${strategies.length}...`);
+    
     try {
       const transcript = await strategies[i]();
+      const strategyDuration = Date.now() - strategyStartTime;
       
-      console.log(`Strategy ${i + 1} returned:`, { 
+      console.log(`⏱️ Strategy ${i + 1} took ${strategyDuration}ms`);
+      console.log(`📊 Result:`, { 
         hasTranscript: !!transcript, 
         isArray: Array.isArray(transcript), 
         length: transcript?.length || 0,
-        firstItem: transcript?.[0]
+        sampleText: transcript?.[0]?.text?.substring(0, 50) || 'N/A'
       });
 
       if (transcript && Array.isArray(transcript) && transcript.length > 0) {
-        // Convert to our format
-        const segments: TranscriptSegment[] = transcript.map((item: { 
-          text?: string; 
-          offset?: number; 
-          duration?: number;
-          start?: number;
-        }) => ({
-          text: String(item.text || '').trim(),
-          offset: typeof item.offset === 'number' ? item.offset : 
-                  typeof item.start === 'number' ? item.start : 0,
-          duration: typeof item.duration === 'number' ? item.duration : 0
-        })).filter(segment => segment.text.length > 0);
+        // Validate and clean segments
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const validSegments = transcript.filter((item: any) => 
+          item && typeof item.text === 'string' && item.text.trim().length > 0
+        );
         
-        if (segments.length > 0) {
-          console.log(`Successfully extracted ${segments.length} transcript segments using strategy ${i + 1}`);
-          return segments;
+        if (validSegments.length > 0) {
+          const totalDuration = Date.now() - startTime;
+          console.log(`\n🎉 SUCCESS! Strategy ${i + 1} extracted ${validSegments.length} segments in ${totalDuration}ms`);
+          console.log(`📝 Sample text: "${validSegments[0].text.substring(0, 100)}..."`);
+          
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return validSegments.map((item: any) => ({
+            text: String(item.text).trim(),
+            offset: typeof item.offset === 'number' ? item.offset : 
+                    typeof item.start === 'number' ? item.start : 0,
+            duration: typeof item.duration === 'number' ? item.duration : 
+                     typeof item.dur === 'number' ? item.dur : 0
+          }));
         }
         
-        console.log(`Strategy ${i + 1}: Transcript had ${transcript.length} items but no valid text segments`);
+        console.log(`⚠️ Strategy ${i + 1}: Got ${transcript.length} items but no valid text content`);
       }
       
-      // If we get an empty array, that means no captions are available
+      // Empty array might mean no captions available
       if (Array.isArray(transcript) && transcript.length === 0) {
-        throw new Error('This video does not have captions enabled');
+        throw new Error('Video has no captions available');
       }
       
-      throw new Error('Empty or invalid transcript data');
+      throw new Error('Invalid transcript format received');
       
     } catch (error) {
-      console.warn(`Strategy ${i + 1} failed:`, error);
+      const strategyDuration = Date.now() - strategyStartTime;
+      console.warn(`❌ Strategy ${i + 1} failed after ${strategyDuration}ms:`, (error as Error).message);
       lastError = error instanceof Error ? error : new Error(String(error));
       
-      // Wait a bit before trying next strategy
+      // Brief pause before next strategy
       if (i < strategies.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log('⏸️ Waiting 200ms before next strategy...');
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
   }
   
-  // If all strategies failed, throw a clear error
-  console.error('All transcript extraction strategies failed. Last error:', lastError);
+  // If all strategies failed, provide detailed feedback
+  const totalDuration = Date.now() - startTime;
+  console.error(`\n💥 ALL STRATEGIES FAILED after ${totalDuration}ms`);
+  console.error('Last error:', lastError?.message);
   
-  // Check if any strategy indicated no captions available
-  if (lastError?.message?.includes('does not have captions enabled')) {
-    throw new Error('This video does not have captions enabled. Please try another video or use manual transcript input.');
+  // Determine if video likely has no captions vs extraction failure
+  const noCaptionsIndicators = [
+    'no captions',
+    'no caption tracks',
+    'captions disabled',
+    'transcript is disabled'
+  ];
+  
+  const isNoCaptions = noCaptionsIndicators.some(indicator => 
+    lastError?.message?.toLowerCase().includes(indicator)
+  );
+  
+  if (isNoCaptions) {
+    throw new Error('This video does not have captions/subtitles enabled. Please try a different video with captions or use manual transcript input.');
   }
   
-  // Generic fallback error
-  throw new Error('Unable to extract transcript from this video. This could mean:\n• The video doesn\'t have captions/CC enabled\n• Captions are auto-generated and not yet available\n• The video is too new\n\nPlease try a different video or use manual transcript input.');
+  // Technical extraction failure
+  throw new Error(`Failed to extract transcript from this video after trying ${strategies.length} different methods. This could be due to:
+• Video privacy restrictions
+• Captions in unsupported format
+• YouTube API limitations
+• Network connectivity issues
+
+Please try:
+1. A different video with confirmed captions
+2. Manual transcript input
+3. Refresh and try again`);
 }
 
 /**
