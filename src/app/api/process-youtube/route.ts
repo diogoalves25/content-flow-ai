@@ -88,6 +88,18 @@ export async function POST(request: NextRequest) {
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     
+    // Check if this is a transcript disabled error
+    if (errorMessage.includes('Transcript is disabled')) {
+      return NextResponse.json(
+        { 
+          error: 'Transcript not available',
+          details: 'This video does not have captions/transcripts enabled. Please try a different video or use the manual transcript input option.',
+          transcriptDisabled: true
+        },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
       { 
         error: 'Failed to process YouTube video',
@@ -149,10 +161,24 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error validating YouTube URL:', error);
     
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Check if this is a transcript disabled error
+    if (errorMessage.includes('Transcript is disabled')) {
+      return NextResponse.json(
+        { 
+          error: 'Transcript not available',
+          details: 'This video does not have captions/transcripts enabled. Please try a different video or use the manual transcript input option.',
+          transcriptDisabled: true
+        },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
       { 
         error: 'Failed to validate YouTube video',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: errorMessage
       },
       { status: 500 }
     );

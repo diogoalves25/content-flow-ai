@@ -23,6 +23,7 @@ interface ValidationResult {
     thumbnails?: string[];
   };
   error?: string;
+  transcriptDisabled?: boolean;
 }
 
 export function URLInput({ onSubmit, loading = false, className = '', style }: URLInputProps) {
@@ -53,7 +54,8 @@ export function URLInput({ onSubmit, loading = false, className = '', style }: U
       } else {
         setValidation({
           isValid: false,
-          error: data.details || data.error
+          error: data.details || data.error,
+          transcriptDisabled: data.transcriptDisabled
         });
         setError(data.error);
       }
@@ -184,9 +186,29 @@ export function URLInput({ onSubmit, loading = false, className = '', style }: U
 
         {/* Error display */}
         {error && (
-          <Alert variant="destructive" className="rounded-2xl border-red-200 bg-red-50/80 backdrop-blur-sm">
+          <Alert 
+            variant={validation?.transcriptDisabled ? "default" : "destructive"} 
+            className={`rounded-2xl backdrop-blur-sm ${
+              validation?.transcriptDisabled 
+                ? "border-amber-200 bg-amber-50/80" 
+                : "border-red-200 bg-red-50/80"
+            }`}
+          >
             <AlertCircle className="h-5 w-5" />
-            <AlertDescription className="text-red-800 font-medium">{error}</AlertDescription>
+            <AlertDescription className={`font-medium ${
+              validation?.transcriptDisabled ? "text-amber-800" : "text-red-800"
+            }`}>
+              {validation?.transcriptDisabled ? (
+                <div className="space-y-2">
+                  <p>{validation.error}</p>
+                  <p className="text-sm text-amber-700">
+                    💡 Try using the <strong>Manual Transcript</strong> tab to paste the transcript directly.
+                  </p>
+                </div>
+              ) : (
+                error
+              )}
+            </AlertDescription>
           </Alert>
         )}
 
