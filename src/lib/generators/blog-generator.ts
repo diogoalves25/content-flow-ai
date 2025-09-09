@@ -72,7 +72,6 @@ export async function generateBlogPost(
     tone = 'professional',
     targetAudience = 'general readers interested in the topic',
     minWordCount = 800,
-    includeSEO = true,
     format = 'analysis'
   } = options;
 
@@ -109,18 +108,18 @@ export async function generateBlogPost(
     console.error('Error generating blog post:', error);
     
     // Fallback generation
-    return createFallbackBlogPost(cleanedContent, tone);
+    return createFallbackBlogPost(cleanedContent);
   }
 }
 
-function createFallbackBlogPost(content: string, tone: string): BlogPost {
+function createFallbackBlogPost(content: string): BlogPost {
   const cleanContent = content
     .replace(/\d+:\d+/g, '') // Remove timestamps
     .replace(/\s+/g, ' ')
     .trim();
     
   const title = extractTitleFromContent(cleanContent);
-  const sections = createSectionsFromContent(cleanContent);
+  const sections = createSectionsFromContent();
   
   const blogContent = `# ${title}
 
@@ -167,7 +166,7 @@ function extractTitleFromContent(content: string): string {
   return 'Insights and Key Takeaways';
 }
 
-function createSectionsFromContent(content: string): string[] {
+function createSectionsFromContent(): string[] {
   return [
     'Introduction',
     'Key Insights', 

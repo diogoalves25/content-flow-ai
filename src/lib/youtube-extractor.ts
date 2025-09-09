@@ -88,36 +88,104 @@ async function getVideoMetadata(videoId: string): Promise<VideoMetadata> {
 async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> {
   console.log('Extracting transcript for video ID:', videoId);
   
-  // Multiple extraction strategies to try
+  // Try direct fetch with different configurations
   const strategies = [
-    // Strategy 1: Default English
+    // Strategy 1: Use ytdl-core to get video info and captions
     async () => {
-      console.log('Trying strategy 1: Default English');
+      console.log('Trying strategy 1: ytdl-core');
+      try {
+        // Dynamic import to avoid TypeScript issues
+        const ytdl = await import('ytdl-core');
+        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+        
+        console.log('Getting video info with ytdl-core...');
+        const info = await ytdl.default.getInfo(videoUrl);
+        
+        // Look for caption tracks - using any to handle complex ytdl-core types
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const captionTracks = (info as any).player_response?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+        
+        if (!captionTracks || !Array.isArray(captionTracks) || captionTracks.length === 0) {
+          throw new Error('No caption tracks found');
+        }
+        
+        console.log(`Found ${captionTracks.length} caption tracks`);
+        
+        // Prefer English captions, fallback to first available
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const selectedTrack = captionTracks.find((track: any) => 
+          track.languageCode === 'en' || (typeof track.languageCode === 'string' && track.languageCode.startsWith('en'))
+        ) || captionTracks[0];
+        
+        if (!selectedTrack) {
+          throw new Error('No valid caption track found');
+        }
+        
+        console.log(`Using caption track: ${selectedTrack.name?.simpleText || selectedTrack.languageCode}`);
+        
+        // Fetch caption content
+        const captionUrl = selectedTrack.baseUrl;
+        if (!captionUrl) {
+          throw new Error('No caption URL found');
+        }
+        
+        const response = await fetch(captionUrl);
+        const xmlText = await response.text();
+        
+        // Parse XML to extract text and timestamps
+        const segments: TranscriptSegment[] = [];
+        const textRegex = /<text start="([^"]*)" dur="([^"]*)"[^>]*>([^<]*)<\/text>/g;
+        let match;
+        
+        while ((match = textRegex.exec(xmlText)) !== null) {
+          const startTime = parseFloat(match[1]) * 1000; // Convert to milliseconds
+          const duration = parseFloat(match[2]) * 1000; // Convert to milliseconds
+          const text = match[3]
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .trim();
+          
+          if (text) {
+            segments.push({
+              text,
+              offset: startTime,
+              duration
+            });
+          }
+        }
+        
+        if (segments.length > 0) {
+          console.log(`Successfully extracted ${segments.length} transcript segments using ytdl-core`);
+          return segments;
+        }
+        
+        throw new Error('No valid transcript segments found in captions');
+        
+      } catch (error) {
+        console.warn('ytdl-core strategy failed:', error);
+        throw error;
+      }
+    },
+    
+    // Strategy 2: Default youtube-transcript
+    async () => {
+      console.log('Trying strategy 2: Default youtube-transcript');
       return await YoutubeTranscript.fetchTranscript(videoId);
     },
     
-    // Strategy 2: Explicit English with config
+    // Strategy 3: Explicit English
     async () => {
-      console.log('Trying strategy 2: Explicit English with config');
-      return await YoutubeTranscript.fetchTranscript(videoId, {
-        lang: 'en'
-      });
-    },
-    
-    // Strategy 3: Auto-generated English
-    async () => {
-      console.log('Trying strategy 3: Auto-generated English');
-      return await YoutubeTranscript.fetchTranscript(videoId, {
-        lang: 'en-US'
-      });
+      console.log('Trying strategy 3: Explicit English');
+      return await YoutubeTranscript.fetchTranscript(videoId, { lang: 'en' });
     },
     
     // Strategy 4: Any available language
     async () => {
       console.log('Trying strategy 4: Any available language');
-      return await YoutubeTranscript.fetchTranscript(videoId, {
-        lang: ''
-      });
+      return await YoutubeTranscript.fetchTranscript(videoId, { lang: '' });
     }
   ];
 
