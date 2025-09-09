@@ -134,13 +134,27 @@ export async function extractYouTubeContent(url: string): Promise<ExtractedConte
   }
 
   try {
-    // Get metadata and transcript concurrently
-    const [metadata, transcriptSegments] = await Promise.all([
-      getVideoMetadata(videoId),
-      extractTranscript(videoId)
-    ]);
+    // Always try to get metadata first
+    const metadata = await getVideoMetadata(videoId);
     
-    const fullTranscript = combineTranscript(transcriptSegments);
+    // Try to extract transcript, but don't fail if it's not available
+    let transcriptSegments: TranscriptSegment[] = [];
+    let fullTranscript = '';
+    
+    try {
+      transcriptSegments = await extractTranscript(videoId);
+      fullTranscript = combineTranscript(transcriptSegments);
+      console.log(`Successfully extracted transcript with ${transcriptSegments.length} segments`);
+    } catch (transcriptError) {
+      console.warn('Transcript extraction failed:', transcriptError);
+      // Provide fallback transcript message
+      fullTranscript = '[No transcript available for this video. Please paste the transcript manually in the next step to generate high-quality content.]';
+      transcriptSegments = [{
+        text: fullTranscript,
+        offset: 0,
+        duration: 0
+      }];
+    }
 
     return {
       videoId,
