@@ -128,6 +128,13 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
     try {
       const transcript = await strategies[i]();
       
+      console.log(`Strategy ${i + 1} returned:`, { 
+        hasTranscript: !!transcript, 
+        isArray: Array.isArray(transcript), 
+        length: transcript?.length || 0,
+        firstItem: transcript?.[0]
+      });
+
       if (transcript && Array.isArray(transcript) && transcript.length > 0) {
         // Convert to our format
         const segments: TranscriptSegment[] = transcript.map((item: { 
@@ -146,6 +153,13 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
           console.log(`Successfully extracted ${segments.length} transcript segments using strategy ${i + 1}`);
           return segments;
         }
+        
+        console.log(`Strategy ${i + 1}: Transcript had ${transcript.length} items but no valid text segments`);
+      }
+      
+      // If we get an empty array, that means no captions are available
+      if (Array.isArray(transcript) && transcript.length === 0) {
+        throw new Error('This video does not have captions enabled');
       }
       
       throw new Error('Empty or invalid transcript data');
@@ -161,13 +175,16 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
     }
   }
   
-  // If all strategies failed, throw the last error
+  // If all strategies failed, throw a clear error
   console.error('All transcript extraction strategies failed. Last error:', lastError);
-  throw new Error(
-    lastError?.message?.includes('Could not retrieve') 
-      ? 'This video does not have captions enabled or transcripts are not available'
-      : 'Failed to extract transcript. The video may not have captions enabled.'
-  );
+  
+  // Check if any strategy indicated no captions available
+  if (lastError?.message?.includes('does not have captions enabled')) {
+    throw new Error('This video does not have captions enabled. Please try another video or use manual transcript input.');
+  }
+  
+  // Generic fallback error
+  throw new Error('Unable to extract transcript from this video. This could mean:\n• The video doesn\'t have captions/CC enabled\n• Captions are auto-generated and not yet available\n• The video is too new\n\nPlease try a different video or use manual transcript input.');
 }
 
 /**
