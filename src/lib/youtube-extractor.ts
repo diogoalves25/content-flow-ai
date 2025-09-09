@@ -196,7 +196,7 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
   const strategies = [
     // Strategy 1: Modern @danielxceron/youtube-transcript with Innertube API fallback
     async () => {
-      console.log('🚀 Strategy 1: Modern youtube-transcript with Innertube API fallback');
+      console.log('🚀 Strategy 1: Modern youtube-transcript with Innertube API fallback (LATEST)');
       try {
         const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
         const transcriptData = await ModernYoutubeTranscript.fetchTranscript(videoUrl);
