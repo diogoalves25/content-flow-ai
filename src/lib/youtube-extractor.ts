@@ -88,7 +88,7 @@ async function getVideoMetadata(videoId: string): Promise<VideoMetadata> {
           formatDuration(parseInt(info.videoDetails.lengthSeconds)) : 'Unknown',
         views: info.videoDetails.viewCount,
         uploadDate: info.videoDetails.uploadDate,
-        description: info.videoDetails.shortDescription?.substring(0, 500),
+        description: info.videoDetails.description?.substring(0, 500),
         thumbnails: info.videoDetails.thumbnails?.map(t => t.url) || []
       };
     } catch (ytdlError) {
@@ -137,7 +137,7 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
         // Second try: With language options
         transcript = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'en' });
         console.log('Language-specific fetch - transcript segments:', transcript?.length || 0);
-      } catch (error2) {
+      } catch {
         console.log('Language-specific fetch failed, trying any available language...');
         
         // Third try: Get any available transcript
