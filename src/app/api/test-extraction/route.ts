@@ -5,7 +5,6 @@ export async function GET() {
     // Debug environment information
     const nodeVersion = process.version;
     const platform = process.platform;
-    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     
     console.log('🐛 Environment Debug:', {
       nodeVersion,
@@ -20,18 +19,17 @@ export async function GET() {
     // Test a simple extraction with browser headers
     const testUrl = 'https://www.youtube.com/watch?v=Hym02GyEI6Q';
     
-    console.log('🧪 Testing extraction with InnerTube method...');
+    console.log('🧪 Testing extraction with timeout handling...');
     
-    // Try InnerTube method first (more reliable on Vercel)
-    let result;
-    try {
-      result = await YoutubeTranscript.fetchTranscriptWithInnerTube(testUrl);
-      console.log(`✅ InnerTube method: ${result?.length || 0} segments`);
-    } catch (innerTubeError) {
-      console.log('⚠️ InnerTube failed, trying default:', innerTubeError.message);
-      result = await YoutubeTranscript.fetchTranscript(testUrl);
-      console.log(`✅ Default method: ${result?.length || 0} segments`);
-    }
+    // Add timeout for Vercel functions
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Request timeout')), 8000)
+    );
+    
+    const result = await Promise.race([
+      YoutubeTranscript.fetchTranscript(testUrl),
+      timeoutPromise
+    ]);
     
     return NextResponse.json({
       success: true,
