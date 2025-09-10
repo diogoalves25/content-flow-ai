@@ -19,7 +19,7 @@ export async function GET() {
       success: true,
       segments: result?.length || 0,
       firstSegment: result?.[0] || null,
-      sampleText: result?.map((s: any) => s.text).join(' ').substring(0, 200),
+      sampleText: result?.map((s: { text: string }) => s.text).join(' ').substring(0, 200),
       message: 'VideoAuddy.io approach works on Vercel!'
     });
     
