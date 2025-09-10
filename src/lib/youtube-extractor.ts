@@ -80,7 +80,7 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
     }
     
     const html = await response.text();
-    console.log('✅ Got YouTube page HTML');
+    console.log('✅ Got YouTube page HTML', `${html.length} characters`);
     
     // Step 2: Extract caption track URLs from the page
     let captionsData = null;
@@ -92,11 +92,14 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
     if (captionMatch) {
       try {
         const captionTracksJson = `[${captionMatch[1]}]`;
+        console.log('🔍 Caption tracks JSON sample:', captionTracksJson.substring(0, 200));
         captionsData = JSON.parse(captionTracksJson);
         console.log(`✅ Found ${captionsData.length} caption tracks`);
       } catch (parseError) {
         console.log('❌ Failed to parse caption tracks JSON:', parseError);
       }
+    } else {
+      console.log('❌ No caption track regex match found');
     }
     
     if (!captionsData || captionsData.length === 0) {
@@ -107,15 +110,19 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
       if (altMatch) {
         try {
           const altCaptionJson = `[${altMatch[1]}]`;
+          console.log('🔍 Alt caption JSON sample:', altCaptionJson.substring(0, 200));
           captionsData = JSON.parse(altCaptionJson);
           console.log(`✅ Found ${captionsData.length} caption tracks (alt method)`);
         } catch (parseError) {
           console.log('❌ Failed to parse alt caption tracks:', parseError);
         }
+      } else {
+        console.log('❌ Alt caption regex also failed');
       }
     }
     
     if (!captionsData || captionsData.length === 0) {
+      console.log('❌ No caption tracks found in video page, will try fallback');
       throw new Error('No caption tracks found in video page');
     }
     
