@@ -1,4 +1,3 @@
-// YouTube transcript extraction with alternative approach
 import { YoutubeTranscript } from '@danielxceron/youtube-transcript';
 
 export interface VideoMetadata {
@@ -53,242 +52,160 @@ export function isValidYouTubeUrl(url: string): boolean {
 }
 
 /**
- * Extract transcript with reliable fallback approach  
+ * Get video metadata using YouTube oEmbed API (no API key required)
  */
-async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> {
-  console.log('📹 Robust extraction approach for video ID:', videoId);
-  
-  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  
-  // Try @danielxceron/youtube-transcript first (since it works locally and has better success rate)
+async function getVideoMetadata(videoId: string): Promise<VideoMetadata> {
   try {
-    console.log('🔄 Trying @danielxceron/youtube-transcript...');
-    const transcript = await YoutubeTranscript.fetchTranscript(videoUrl);
-    
-    if (transcript && transcript.length > 0) {
-      console.log(`✅ SUCCESS: Got ${transcript.length} transcript segments`);
-      console.log(`📝 First segment: "${transcript[0]?.text}"`);
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const segments: TranscriptSegment[] = transcript.map((item: any) => ({
-        text: item.text || '',
-        offset: parseFloat(item.offset?.toString() || '0'),
-        duration: parseFloat(item.duration?.toString() || '0')
-      }));
-
-      console.log(`📝 Sample text: "${segments[0]?.text?.substring(0, 100)}..."`);
-      return segments;
-    }
-  } catch (error) {
-    console.log('❌ @danielxceron/youtube-transcript failed:', error);
-  }
-  
-  // Fallback: Try direct API approach (VideoBuddy.io style)
-  try {
-    console.log('🔄 Falling back to direct API approach...');
-    
-    // Step 1: Get the YouTube page with proper headers
-    const response = await fetch(videoUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'DNT': '1',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-      }
-    });
+    const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+    const response = await fetch(oembedUrl);
     
     if (!response.ok) {
-      throw new Error(`Failed to fetch video page: ${response.status}`);
+      throw new Error('Failed to fetch video metadata');
     }
-    
-    const html = await response.text();
-    console.log('✅ Got YouTube page HTML', `${html.length} characters`);
-    
-    // Step 2: Extract caption track URLs from the page
-    let captionsData = null;
-    
-    // Look for playerCaptionsTracklistRenderer in the HTML
-    const captionTrackRegex = /"playerCaptionsTracklistRenderer":\{"captionTracks":\[(.*?)\]/;
-    const captionMatch = html.match(captionTrackRegex);
-    
-    if (captionMatch) {
-      try {
-        const captionTracksJson = `[${captionMatch[1]}]`;
-        console.log('🔍 Caption tracks JSON sample:', captionTracksJson.substring(0, 200));
-        captionsData = JSON.parse(captionTracksJson);
-        console.log(`✅ Found ${captionsData.length} caption tracks`);
-      } catch (parseError) {
-        console.log('❌ Failed to parse caption tracks JSON:', parseError);
-      }
-    } else {
-      console.log('❌ No caption track regex match found');
-    }
-    
-    if (!captionsData || captionsData.length === 0) {
-      // Try alternative extraction method
-      const altCaptionRegex = /"captionTracks":\[(.*?)\]/;
-      const altMatch = html.match(altCaptionRegex);
-      
-      if (altMatch) {
-        try {
-          const altCaptionJson = `[${altMatch[1]}]`;
-          console.log('🔍 Alt caption JSON sample:', altCaptionJson.substring(0, 200));
-          captionsData = JSON.parse(altCaptionJson);
-          console.log(`✅ Found ${captionsData.length} caption tracks (alt method)`);
-        } catch (parseError) {
-          console.log('❌ Failed to parse alt caption tracks:', parseError);
-        }
-      } else {
-        console.log('❌ Alt caption regex also failed');
-      }
-    }
-    
-    if (!captionsData || captionsData.length === 0) {
-      throw new Error('No caption tracks found in direct API approach');
-    }
-    
-    // Step 3: Find English caption track
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const englishTrack = captionsData.find((track: any) => 
-      track.languageCode === 'en' || 
-      track.languageCode === 'en-US' || 
-      track.languageCode === 'en-GB' ||
-      track.vssId?.includes('en')
-    ) || captionsData[0]; // Fallback to first track
-    
-    if (!englishTrack?.baseUrl) {
-      throw new Error('No suitable caption track found');
-    }
-    
-    console.log(`📝 Using caption track: ${englishTrack.name?.simpleText || 'Unknown'}`);
-    
-    // Step 4: Fetch the caption XML
-    const captionResponse = await fetch(englishTrack.baseUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      }
-    });
-    
-    if (!captionResponse.ok) {
-      throw new Error(`Failed to fetch captions: ${captionResponse.status}`);
-    }
-    
-    const captionXml = await captionResponse.text();
-    console.log(`✅ Got caption XML (${captionXml.length} characters)`);
-    
-    // Step 5: Parse the XML
-    const segments: TranscriptSegment[] = [];
-    const textRegex = /<text start="([^"]*)" dur="([^"]*)"[^>]*>(.*?)<\/text>/g;
-    let match;
-    
-    while ((match = textRegex.exec(captionXml)) !== null) {
-      const text = match[3]
-        .replace(/<[^>]*>/g, '') // Remove HTML tags
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&nbsp;/g, ' ')
-        .trim();
-      
-      if (text) {
-        segments.push({
-          text,
-          offset: parseFloat(match[1]),
-          duration: parseFloat(match[2])
-        });
-      }
-    }
-    
-    console.log(`✅ DIRECT API SUCCESS: Got ${segments.length} transcript segments`);
-    console.log(`📝 First segment: "${segments[0]?.text}"`);
-    console.log(`📝 Sample text: "${segments[0]?.text?.substring(0, 100)}..."`);
-    
-    if (segments.length === 0) {
-      throw new Error('No transcript segments extracted from XML');
-    }
-    
-    return segments;
-    
-  } catch (directApiError) {
-    console.error('❌ Direct API approach also failed:', directApiError);
-  }
 
-  throw new Error('All transcript extraction methods failed for this video');
-}
-
-/**
- * Extract basic video metadata from YouTube page
- */
-async function extractVideoMetadata(videoId: string): Promise<VideoMetadata> {
-  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  
-  try {
-    const response = await fetch(videoUrl);
-    const html = await response.text();
-    
-    // Extract basic metadata
-    const titleMatch = html.match(/<title>(.*?)<\/title>/);
-    const title = titleMatch?.[1]?.replace(' - YouTube', '') || 'Unknown Title';
-    
-    const authorMatch = html.match(/"ownerChannelName":"([^"]*)"/) || 
-                      html.match(/"author":"([^"]*)"/) ||
-                      html.match(/<meta name="author" content="([^"]*)">/);
-    const author = authorMatch?.[1] || 'Unknown Author';
+    const data = await response.json();
     
     return {
-      title,
-      author,
-      duration: 'Unknown',
-      thumbnails: [`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`]
+      title: data.title || 'Unknown Title',
+      author: data.author_name || 'Unknown Author',
+      duration: 'Unknown', // oEmbed doesn't provide duration
+      thumbnails: [data.thumbnail_url].filter(Boolean)
     };
   } catch (error) {
-    console.warn('Failed to extract metadata:', error);
+    console.warn('Failed to fetch metadata:', error);
     return {
       title: 'Unknown Title',
-      author: 'Unknown Author', 
-      duration: 'Unknown',
-      thumbnails: [`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`]
+      author: 'Unknown Author',
+      duration: 'Unknown'
     };
   }
 }
 
 /**
- * Main function to extract YouTube content
+ * Extract transcript from YouTube video
+ */
+async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> {
+  try {
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    
+    return transcript.map((item: { text: string; offset: number; duration: number }) => ({
+      text: item.text,
+      offset: item.offset,
+      duration: item.duration
+    }));
+  } catch (error) {
+    console.error('Failed to extract transcript:', error);
+    throw new Error(
+      'Failed to extract transcript. The video may not have captions available, ' +
+      'or the video might be private/restricted.'
+    );
+  }
+}
+
+/**
+ * Combine transcript segments into full text
+ */
+function combineTranscript(segments: TranscriptSegment[]): string {
+  return segments
+    .map(segment => segment.text)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Main function to extract complete content from YouTube URL
  */
 export async function extractYouTubeContent(url: string): Promise<ExtractedContent> {
-  console.log('🎯 Starting robust YouTube content extraction for:', url);
-
-  // Extract video ID
   const videoId = extractVideoId(url);
+  
   if (!videoId) {
-    throw new Error('Invalid YouTube URL provided');
+    throw new Error('Invalid YouTube URL format');
   }
 
-  // Extract metadata and transcript in parallel
-  const [metadata, transcriptSegments] = await Promise.all([
-    extractVideoMetadata(videoId),
-    extractTranscript(videoId)
-  ]);
+  try {
+    // Extract both metadata and transcript in parallel
+    const [metadata, transcriptSegments] = await Promise.all([
+      getVideoMetadata(videoId),
+      extractTranscript(videoId)
+    ]);
 
-  // Create full transcript text
-  const fullTranscript = transcriptSegments.map(segment => segment.text).join(' ');
+    const fullTranscript = combineTranscript(transcriptSegments);
 
-  console.log('✅ Successfully extracted YouTube content:', {
-    videoId,
-    segmentCount: transcriptSegments.length,
-    transcriptLength: fullTranscript.length
-  });
+    if (!fullTranscript || fullTranscript.length < 10) {
+      throw new Error('Transcript is too short or empty. Video may not have proper captions.');
+    }
 
-  return {
-    videoId,
-    url,
-    metadata,
-    transcript: transcriptSegments,
-    fullTranscript,
-  };
+    return {
+      videoId,
+      url: `https://www.youtube.com/watch?v=${videoId}`,
+      metadata,
+      transcript: transcriptSegments,
+      fullTranscript
+    };
+  } catch (error) {
+    console.error('Error extracting YouTube content:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get transcript duration in human-readable format
+ */
+export function getTranscriptDuration(segments: TranscriptSegment[]): string {
+  if (segments.length === 0) return '0:00';
+  
+  const lastSegment = segments[segments.length - 1];
+  const totalSeconds = Math.round((lastSegment.offset + lastSegment.duration) / 1000);
+  
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours}:${remainingMinutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+  
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Chunk transcript for better processing
+ */
+export function chunkTranscript(
+  fullTranscript: string, 
+  maxChunkLength: number = 2000
+): string[] {
+  if (fullTranscript.length <= maxChunkLength) {
+    return [fullTranscript];
+  }
+
+  const sentences = fullTranscript.split(/[.!?]+/).filter(s => s.trim());
+  const chunks: string[] = [];
+  let currentChunk = '';
+
+  for (const sentence of sentences) {
+    const trimmedSentence = sentence.trim();
+    if (!trimmedSentence) continue;
+
+    const potentialChunk = currentChunk 
+      ? `${currentChunk}. ${trimmedSentence}`
+      : trimmedSentence;
+
+    if (potentialChunk.length <= maxChunkLength) {
+      currentChunk = potentialChunk;
+    } else {
+      if (currentChunk) {
+        chunks.push(currentChunk.trim());
+      }
+      currentChunk = trimmedSentence;
+    }
+  }
+
+  if (currentChunk) {
+    chunks.push(currentChunk.trim());
+  }
+
+  return chunks.filter(chunk => chunk.length > 0);
 }
