@@ -1,4 +1,4 @@
-// Simple YouTube transcript extraction - Alex Finn approach  
+// Simple YouTube transcript extraction - Direct approach  
 import { YoutubeTranscript } from '@danielxceron/youtube-transcript';
 
 export interface VideoMetadata {
@@ -53,15 +53,15 @@ export function isValidYouTubeUrl(url: string): boolean {
 }
 
 /**
- * Extract transcript using modern Innertube API
+ * Extract transcript using simple direct approach
  */
 async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> {
-  console.log('📹 Alex Finn approach for video ID:', videoId);
+  console.log('📹 Direct approach for video ID:', videoId);
   
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   
   try {
-    // EXACT same call Alex used - simple and direct
+    // Simple direct call - exactly what worked before
     const transcript = await YoutubeTranscript.fetchTranscript(videoUrl);
     
     console.log(`✅ SUCCESS: Got ${transcript?.length || 0} transcript segments`);
@@ -128,7 +128,7 @@ async function extractVideoMetadata(videoId: string): Promise<VideoMetadata> {
  * Main function to extract YouTube content
  */
 export async function extractYouTubeContent(url: string): Promise<ExtractedContent> {
-  console.log('🎯 Starting YouTube content extraction for:', url);
+  console.log('🎯 Starting simple direct YouTube content extraction for:', url);
 
   // Extract video ID
   const videoId = extractVideoId(url);
