@@ -1,6 +1,5 @@
 // YouTube transcript extraction with alternative approach
 import { YoutubeTranscript } from '@danielxceron/youtube-transcript';
-import { getSubtitles } from 'youtube-captions-scraper';
 
 export interface VideoMetadata {
   title: string;
@@ -121,6 +120,7 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
     }
     
     // Step 3: Find English caption track
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const englishTrack = captionsData.find((track: any) => 
       track.languageCode === 'en' || 
       track.languageCode === 'en-US' || 
