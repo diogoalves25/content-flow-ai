@@ -39,14 +39,14 @@ export async function GET() {
       console.error('❌ DETAILED ERROR ANALYSIS:');
       console.error('Error type:', typeof error);
       console.error('Error constructor:', error?.constructor?.name);
-      console.error('Error message:', error?.message);
-      console.error('Error stack (first 3 lines):', error?.stack?.split('\n').slice(0, 3));
+      console.error('Error message:', (error as any)?.message);
+      console.error('Error stack (first 3 lines):', (error as any)?.stack?.split('\n').slice(0, 3));
       console.error('Error keys:', Object.keys(error || {}));
       
       errorDetails = {
         type: typeof error,
         constructor: error?.constructor?.name,
-        message: error?.message,
+        message: (error as any)?.message,
         keys: Object.keys(error || {})
       };
       
