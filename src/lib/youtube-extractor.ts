@@ -53,16 +53,41 @@ export function isValidYouTubeUrl(url: string): boolean {
 }
 
 /**
- * Extract transcript using direct YouTube API approach (like VideoBuddy.io)
+ * Extract transcript with reliable fallback approach  
  */
 async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> {
-  console.log('📹 Direct YouTube API approach for video ID:', videoId);
+  console.log('📹 Robust extraction approach for video ID:', videoId);
   
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   
+  // Try @danielxceron/youtube-transcript first (since it works locally and has better success rate)
   try {
+    console.log('🔄 Trying @danielxceron/youtube-transcript...');
+    const transcript = await YoutubeTranscript.fetchTranscript(videoUrl);
+    
+    if (transcript && transcript.length > 0) {
+      console.log(`✅ SUCCESS: Got ${transcript.length} transcript segments`);
+      console.log(`📝 First segment: "${transcript[0]?.text}"`);
+      
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const segments: TranscriptSegment[] = transcript.map((item: any) => ({
+        text: item.text || '',
+        offset: parseFloat(item.offset?.toString() || '0'),
+        duration: parseFloat(item.duration?.toString() || '0')
+      }));
+
+      console.log(`📝 Sample text: "${segments[0]?.text?.substring(0, 100)}..."`);
+      return segments;
+    }
+  } catch (error) {
+    console.log('❌ @danielxceron/youtube-transcript failed:', error);
+  }
+  
+  // Fallback: Try direct API approach (VideoBuddy.io style)
+  try {
+    console.log('🔄 Falling back to direct API approach...');
+    
     // Step 1: Get the YouTube page with proper headers
-    console.log('🔄 Fetching YouTube page...');
     const response = await fetch(videoUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -122,8 +147,7 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
     }
     
     if (!captionsData || captionsData.length === 0) {
-      console.log('❌ No caption tracks found in video page, will try fallback');
-      throw new Error('No caption tracks found in video page');
+      throw new Error('No caption tracks found in direct API approach');
     }
     
     // Step 3: Find English caption track
@@ -180,7 +204,7 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
       }
     }
     
-    console.log(`✅ SUCCESS: Got ${segments.length} transcript segments`);
+    console.log(`✅ DIRECT API SUCCESS: Got ${segments.length} transcript segments`);
     console.log(`📝 First segment: "${segments[0]?.text}"`);
     console.log(`📝 Sample text: "${segments[0]?.text?.substring(0, 100)}..."`);
     
@@ -190,32 +214,11 @@ async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> 
     
     return segments;
     
-  } catch (error) {
-    console.error('❌ Direct API extraction failed:', error);
-    
-    // Fallback to @danielxceron/youtube-transcript as backup
-    try {
-      console.log('🔄 Falling back to @danielxceron/youtube-transcript...');
-      const transcript = await YoutubeTranscript.fetchTranscript(videoUrl);
-      
-      if (transcript && transcript.length > 0) {
-        console.log(`✅ FALLBACK SUCCESS: Got ${transcript.length} transcript segments`);
-        
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const segments: TranscriptSegment[] = transcript.map((item: any) => ({
-          text: item.text || '',
-          offset: parseFloat(item.offset?.toString() || '0'),
-          duration: parseFloat(item.duration?.toString() || '0')
-        }));
-        
-        return segments;
-      }
-    } catch (fallbackError) {
-      console.log('❌ Fallback also failed:', fallbackError);
-    }
-    
-    throw error;
+  } catch (directApiError) {
+    console.error('❌ Direct API approach also failed:', directApiError);
   }
+
+  throw new Error('All transcript extraction methods failed for this video');
 }
 
 /**
@@ -258,7 +261,7 @@ async function extractVideoMetadata(videoId: string): Promise<VideoMetadata> {
  * Main function to extract YouTube content
  */
 export async function extractYouTubeContent(url: string): Promise<ExtractedContent> {
-  console.log('🎯 Starting direct API YouTube content extraction (VideoBuddy.io style) for:', url);
+  console.log('🎯 Starting robust YouTube content extraction for:', url);
 
   // Extract video ID
   const videoId = extractVideoId(url);
