@@ -16,20 +16,42 @@ export async function GET() {
     // Test if the modern library can be imported
     const { YoutubeTranscript } = await import('@danielxceron/youtube-transcript');
     
-    // Test a simple extraction with browser headers
+    // Test EXACT same video that works on VideoAuddy.io
     const testUrl = 'https://www.youtube.com/watch?v=Hym02GyEI6Q';
     
-    console.log('🧪 Testing extraction with timeout handling...');
+    console.log('🧪 DEBUGGING VideoAuddy.io video...');
+    console.log('📹 Video URL:', testUrl);
+    console.log('📹 Video ID extracted:', testUrl.match(/v=([^&]+)/)?.[1]);
     
-    // Add timeout for Vercel functions
-    const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Request timeout')), 8000)
-    );
+    // Test with detailed error logging
+    let result;
+    let errorDetails;
     
-    const result = await Promise.race([
-      YoutubeTranscript.fetchTranscript(testUrl),
-      timeoutPromise
-    ]);
+    try {
+      console.log('🚀 Calling YoutubeTranscript.fetchTranscript...');
+      result = await YoutubeTranscript.fetchTranscript(testUrl);
+      console.log('✅ Raw result type:', typeof result);
+      console.log('✅ Raw result isArray:', Array.isArray(result));
+      console.log('✅ Raw result length:', result?.length);
+      console.log('✅ Raw result sample:', result?.[0]);
+      
+    } catch (error) {
+      console.error('❌ DETAILED ERROR ANALYSIS:');
+      console.error('Error type:', typeof error);
+      console.error('Error constructor:', error?.constructor?.name);
+      console.error('Error message:', error?.message);
+      console.error('Error stack (first 3 lines):', error?.stack?.split('\n').slice(0, 3));
+      console.error('Error keys:', Object.keys(error || {}));
+      
+      errorDetails = {
+        type: typeof error,
+        constructor: error?.constructor?.name,
+        message: error?.message,
+        keys: Object.keys(error || {})
+      };
+      
+      throw error;
+    }
     
     return NextResponse.json({
       success: true,
@@ -49,14 +71,23 @@ export async function GET() {
     
     return NextResponse.json({
       success: false,
-      libraryLoaded: false,
+      libraryLoaded: true, // Library loads fine, extraction fails
       environment: {
         nodeVersion: process.version,
         platform: process.platform,
         isVercel: !!process.env.VERCEL
       },
+      videoDetails: {
+        url: 'https://www.youtube.com/watch?v=Hym02GyEI6Q',
+        videoId: 'Hym02GyEI6Q'
+      },
+      errorDetails: errorDetails || {
+        type: typeof error,
+        constructor: error?.constructor?.name,
+        message: error?.message
+      },
       error: error instanceof Error ? error.message : 'Unknown error',
-      message: 'Library failed to load or extract'
+      message: 'Library loaded but extraction failed - debugging why VideoAuddy.io works but this doesn\'t'
     });
   }
 }
