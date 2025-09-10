@@ -56,23 +56,16 @@ export function isValidYouTubeUrl(url: string): boolean {
  * Extract transcript using modern Innertube API
  */
 async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> {
-  console.log('📹 Simple extraction for video ID:', videoId);
+  console.log('📹 Alex Finn approach for video ID:', videoId);
   
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   
   try {
-    // Add timeout handling for Vercel (functions timeout at 10s free / 60s pro)
-    const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Request timeout - Vercel function limit')), 8000)
-    );
-    
-    // Simple extraction with timeout
-    const transcript = await Promise.race([
-      YoutubeTranscript.fetchTranscript(videoUrl),
-      timeoutPromise
-    ]);
+    // EXACT same call Alex used - simple and direct
+    const transcript = await YoutubeTranscript.fetchTranscript(videoUrl);
     
     console.log(`✅ SUCCESS: Got ${transcript?.length || 0} transcript segments`);
+    console.log(`📝 First segment: "${transcript?.[0]?.text}"`);
     
     if (!transcript || transcript.length === 0) {
       throw new Error('No transcript found');
