@@ -1,5 +1,6 @@
-// Simple YouTube transcript extraction - Direct approach  
+// YouTube transcript extraction with alternative approach
 import { YoutubeTranscript } from '@danielxceron/youtube-transcript';
+import { getSubtitles } from 'youtube-captions-scraper';
 
 export interface VideoMetadata {
   title: string;
@@ -53,37 +54,159 @@ export function isValidYouTubeUrl(url: string): boolean {
 }
 
 /**
- * Extract transcript using simple direct approach
+ * Extract transcript using direct YouTube API approach (like VideoBuddy.io)
  */
 async function extractTranscript(videoId: string): Promise<TranscriptSegment[]> {
-  console.log('📹 Direct approach for video ID:', videoId);
+  console.log('📹 Direct YouTube API approach for video ID:', videoId);
   
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   
   try {
-    // Simple direct call - exactly what worked before
-    const transcript = await YoutubeTranscript.fetchTranscript(videoUrl);
+    // Step 1: Get the YouTube page with proper headers
+    console.log('🔄 Fetching YouTube page...');
+    const response = await fetch(videoUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+      }
+    });
     
-    console.log(`✅ SUCCESS: Got ${transcript?.length || 0} transcript segments`);
-    console.log(`📝 First segment: "${transcript?.[0]?.text}"`);
-    
-    if (!transcript || transcript.length === 0) {
-      throw new Error('No transcript found');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch video page: ${response.status}`);
     }
     
-    // Convert to our format
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const segments: TranscriptSegment[] = transcript.map((item: any) => ({
-      text: item.text || '',
-      offset: parseFloat(item.offset?.toString() || '0'),
-      duration: parseFloat(item.duration?.toString() || '0')
-    }));
-
+    const html = await response.text();
+    console.log('✅ Got YouTube page HTML');
+    
+    // Step 2: Extract caption track URLs from the page
+    let captionsData = null;
+    
+    // Look for playerCaptionsTracklistRenderer in the HTML
+    const captionTrackRegex = /"playerCaptionsTracklistRenderer":\{"captionTracks":\[(.*?)\]/;
+    const captionMatch = html.match(captionTrackRegex);
+    
+    if (captionMatch) {
+      try {
+        const captionTracksJson = `[${captionMatch[1]}]`;
+        captionsData = JSON.parse(captionTracksJson);
+        console.log(`✅ Found ${captionsData.length} caption tracks`);
+      } catch (parseError) {
+        console.log('❌ Failed to parse caption tracks JSON:', parseError);
+      }
+    }
+    
+    if (!captionsData || captionsData.length === 0) {
+      // Try alternative extraction method
+      const altCaptionRegex = /"captionTracks":\[(.*?)\]/;
+      const altMatch = html.match(altCaptionRegex);
+      
+      if (altMatch) {
+        try {
+          const altCaptionJson = `[${altMatch[1]}]`;
+          captionsData = JSON.parse(altCaptionJson);
+          console.log(`✅ Found ${captionsData.length} caption tracks (alt method)`);
+        } catch (parseError) {
+          console.log('❌ Failed to parse alt caption tracks:', parseError);
+        }
+      }
+    }
+    
+    if (!captionsData || captionsData.length === 0) {
+      throw new Error('No caption tracks found in video page');
+    }
+    
+    // Step 3: Find English caption track
+    const englishTrack = captionsData.find((track: any) => 
+      track.languageCode === 'en' || 
+      track.languageCode === 'en-US' || 
+      track.languageCode === 'en-GB' ||
+      track.vssId?.includes('en')
+    ) || captionsData[0]; // Fallback to first track
+    
+    if (!englishTrack?.baseUrl) {
+      throw new Error('No suitable caption track found');
+    }
+    
+    console.log(`📝 Using caption track: ${englishTrack.name?.simpleText || 'Unknown'}`);
+    
+    // Step 4: Fetch the caption XML
+    const captionResponse = await fetch(englishTrack.baseUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      }
+    });
+    
+    if (!captionResponse.ok) {
+      throw new Error(`Failed to fetch captions: ${captionResponse.status}`);
+    }
+    
+    const captionXml = await captionResponse.text();
+    console.log(`✅ Got caption XML (${captionXml.length} characters)`);
+    
+    // Step 5: Parse the XML
+    const segments: TranscriptSegment[] = [];
+    const textRegex = /<text start="([^"]*)" dur="([^"]*)"[^>]*>(.*?)<\/text>/g;
+    let match;
+    
+    while ((match = textRegex.exec(captionXml)) !== null) {
+      const text = match[3]
+        .replace(/<[^>]*>/g, '') // Remove HTML tags
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+      
+      if (text) {
+        segments.push({
+          text,
+          offset: parseFloat(match[1]),
+          duration: parseFloat(match[2])
+        });
+      }
+    }
+    
+    console.log(`✅ SUCCESS: Got ${segments.length} transcript segments`);
+    console.log(`📝 First segment: "${segments[0]?.text}"`);
     console.log(`📝 Sample text: "${segments[0]?.text?.substring(0, 100)}..."`);
+    
+    if (segments.length === 0) {
+      throw new Error('No transcript segments extracted from XML');
+    }
+    
     return segments;
     
   } catch (error) {
-    console.error('❌ Transcript extraction failed:', error);
+    console.error('❌ Direct API extraction failed:', error);
+    
+    // Fallback to @danielxceron/youtube-transcript as backup
+    try {
+      console.log('🔄 Falling back to @danielxceron/youtube-transcript...');
+      const transcript = await YoutubeTranscript.fetchTranscript(videoUrl);
+      
+      if (transcript && transcript.length > 0) {
+        console.log(`✅ FALLBACK SUCCESS: Got ${transcript.length} transcript segments`);
+        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const segments: TranscriptSegment[] = transcript.map((item: any) => ({
+          text: item.text || '',
+          offset: parseFloat(item.offset?.toString() || '0'),
+          duration: parseFloat(item.duration?.toString() || '0')
+        }));
+        
+        return segments;
+      }
+    } catch (fallbackError) {
+      console.log('❌ Fallback also failed:', fallbackError);
+    }
+    
     throw error;
   }
 }
@@ -128,7 +251,7 @@ async function extractVideoMetadata(videoId: string): Promise<VideoMetadata> {
  * Main function to extract YouTube content
  */
 export async function extractYouTubeContent(url: string): Promise<ExtractedContent> {
-  console.log('🎯 Starting simple direct YouTube content extraction for:', url);
+  console.log('🎯 Starting direct API YouTube content extraction (VideoBuddy.io style) for:', url);
 
   // Extract video ID
   const videoId = extractVideoId(url);
