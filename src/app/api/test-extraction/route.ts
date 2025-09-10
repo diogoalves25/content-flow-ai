@@ -39,17 +39,18 @@ export async function GET() {
       console.error('❌ DETAILED ERROR ANALYSIS:');
       console.error('Error type:', typeof error);
       console.error('Error constructor:', error?.constructor?.name);
-      console.error('Error message:', (error as any)?.message);
-      console.error('Error stack (first 3 lines):', (error as any)?.stack?.split('\n').slice(0, 3));
+      console.error('Error message:', error instanceof Error ? error.message : 'Unknown');
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
       console.error('Error keys:', Object.keys(error || {}));
       
       errorDetails = {
         type: typeof error,
         constructor: error?.constructor?.name,
-        message: (error as any)?.message,
+        message: error instanceof Error ? error.message : 'Unknown',
         keys: Object.keys(error || {})
       };
       
+      console.log('Error details stored:', errorDetails);
       throw error;
     }
     
